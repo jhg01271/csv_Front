@@ -28,8 +28,6 @@ class RegCam(MDScreen):
             if self.cam_app3.cropped_img_filename:
                 self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
                 self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
-                self.manager.get_screen('mypage').set_regimage(self.cam_app3.cropped_img_filename)
-                self.manager.get_screen('mypage').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
             
             self.manager.current = 'signup'  # 기본적으로 signup으로 이동
 

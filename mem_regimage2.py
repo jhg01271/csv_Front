@@ -21,9 +21,9 @@ class Regimage2(MDScreen):
 
     def set_mem_id(self, mem_id):
         self.mem_id = mem_id
-        reg_cam_screen = self.manager.get_screen('reg_cam')
-        reg_cam_screen.put_mem_id(self.mem_id)
-        print(f"MemRegImage: mem_id put in to reg_cam")
+        reg_cam2_screen = self.manager.get_screen('reg_cam2')
+        reg_cam2_screen.put_mem_id(self.mem_id)
+        print(f"MemRegImage: mem_id put in to reg_cam2")
 
     # def reg_cam(self):  # 신분증 촬영 메서드 (여기에 촬영 로직을 추가)
     #     pass

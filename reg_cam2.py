@@ -26,8 +26,6 @@ class RegCam2(MDScreen):
             self.cam_app3.stop_camera()
             self.ids.web_cam.clear_widgets()
             if self.cam_app3.cropped_img_filename:
-                self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
-                self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
                 self.manager.get_screen('mypage').set_regimage(self.cam_app3.cropped_img_filename)
                 self.manager.get_screen('mypage').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
             
@@ -41,4 +39,4 @@ class RegCam2(MDScreen):
 
     def put_mem_id(self, mem_id):
         self.mem_id = mem_id
-        print(f"RegCam: mem_id set to {self.mem_id}")
+        print(f"RegCam2: mem_id set to {self.mem_id}")

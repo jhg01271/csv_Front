@@ -405,7 +405,7 @@ class Mypage(MDScreen):
     def set_regno(self, regno1, regno2):
         self.img_regno1 = regno1
         self.img_regno2 = regno2
-        print(f"mypage.py regno1, regno2 : {self.regno1}, {self.regno2}")
+        print(f"mypage.py regno1, regno2 : {self.img_regno1}, {self.img_regno2}")
         
     def set_regimage(self, regimage):
         self.regimage = regimage
