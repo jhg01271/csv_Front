@@ -1,0 +1,131 @@
+#:import CustomTextField customwidgets
+<DrivingStart>:
+    name: "driving_start"
+
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        # 노란색 배경 영역 (로고 이미지와 검정색 영역 포함)
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(53)
+            md_bg_color: "#FFFFFF"  # 노란색 배경
+            padding: [dp(5), dp(15), 0, 0]
+            spacing: dp(0)
+            pos_hint: {"center_x": 0.5}
+
+            # 왼쪽 빈 MDLabel
+            MDLabel:
+                size_hint_x: None
+                width: dp(73)
+
+            # 로고 이미지 중앙 정렬
+            Image:
+                source: 'csv_logo.png'
+                size_hint_y: None
+                md_bg_color: "#FFFFFF"
+                size: dp(40), dp(40)
+                padding: [dp(20), dp(15), 0, 0]
+                allow_stretch: True
+                pos_hint: {"center_x": 0.6,"center_y": 0.6}
+
+            # 오른쪽 빈 MDLabel
+            MDLabel:
+                size_hint_x: None
+                width: dp(73)
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(20)
+            padding: dp(20)
+            md_bg_color: "#F7F7F9"
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: dp(60)
+                padding: [0, dp(10), 0, dp(10)]
+                MDLabel:
+                    id: title_box
+                    text: "운행전 인증확인"
+                    halign: "left"
+                    font_size: sp(20)
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                MDLabel:
+                    id: text_box
+                    text: "헬멧 착용 후 얼굴을 인식해주세요"
+                    size_hint_y: None
+                    font_size: sp(17)
+                    text_color: "#656565"
+                    height: self.texture_size[1]
+            BoxLayout:
+                id: camera_box
+                size_hint: (1, 0.6)
+                Camera:
+                    id: camera
+                    resolution: (640, 480)
+                    play: False  # 카메라가 자동으로 켜지지 않도록 설정
+
+            # 스크롤 가능한 hide_box
+            MDScrollView:
+                size_hint_y: None
+                height: dp(120)
+                
+                MDBoxLayout:
+                    id: hide_box
+                    orientation: 'vertical'
+                    md_bg_color: "#FFFFFF"
+                    radius: [10, 10, 10, 10]
+                    padding: [dp(10), dp(15), dp(8) , dp(15)]  
+                    adaptive_height: True
+
+                    # 주의 사항 안내
+                    MDLabel:
+                        text: "<주의 사항>"
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Error"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        font_size: sp(12)
+
+                    # 추가 텍스트
+                    MDLabel:
+                        text: "- 사용자 확인을 위한 시간이 다소 소요될 수 있습니다. \n- 운행 중 재인증은 30분 이후 시작됩니다. \n- 경고음이 나올 수 있으니 스피커 크기를 조절해주세요. \n- 화면에 얼굴이 올바르게 인식될 수 있도록 정면을 바라봐주세요. \n- 지속적으로 인증이 안될 시 고객센터로 문의 주세요."
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Secondary"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        font_size: sp(12)
+
+            MDRaisedButton:
+                id: btn_verify
+                text: "인증 완료"
+                size_hint: (0.9, None)
+                height: dp(48)
+                font_size: sp(18)
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: "#00289B"
+                disabled: True
+                on_release: root.verify_and_change_buttons()
+                elevation: 0
+
+            MDRaisedButton:
+                id: btn_customer_service
+                text: "인증 종료"
+                size_hint: (0.9, None)
+                height: dp(48)
+                font_size: sp(18)
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: "#FFFFFF"
+                line_color: "#00289B"
+                text_color: "#00289B"
+                opacity: 0  # 버튼을 투명하게 만듦
+                disabled: True  # 클릭을 비활성화
+                on_release: root.end_driving()
+                elevation: 0

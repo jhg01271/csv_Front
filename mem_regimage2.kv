@@ -1,0 +1,73 @@
+#:import CustomTextField customwidgets 
+# 신분증 인증 화면 정의
+<Regimage2>:
+    name: 'mem_regimage2'
+
+    FloatLayout:  # 부모 레이아웃을 FloatLayout으로 변경하여 위젯의 위치를 자유롭게 조정
+
+        # 상단 타이틀 및 나가기 버튼 박스
+        MDBoxLayout:  # 상단에 위치할 타이틀과 나가기 버튼 박스
+            size_hint_y: None  # 레이아웃 높이를 고정하기 위해 None으로 설정
+            height: dp(50)  # 레이아웃 높이를 50dp로 설정
+            padding: [dp(10), dp(0), dp(10), dp(0)]  # 내부 패딩 설정 (왼쪽, 위, 오른쪽, 아래)
+            # md_bg_color: 1, 0, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+            pos_hint: {"center_x": 1.3, "top": 1}  # 화면 상단에 고정
+
+
+            # 나가기 버튼
+            MDTextButton:
+                text: "나가기"
+                font_size: '15sp'
+                text_color: "#00289B"
+                pos_hint: {"center_y": 0.5}
+                on_press: root.switch_screen('mypage')
+
+        # 타이틀 레이블
+        MDLabel:
+            text: "신분증 확인"
+            # bold: True
+            halign: "left"
+            valign: "middle"  # 세로 가운데 정렬
+            size_hint: None, None  # 크기 고정
+            width: dp(300)  # 레이블의 고정 너비
+            height: dp(60)  # 고정 높이
+            font_size: '20sp'
+            text_color: "#00289B"
+            pos_hint: {"top": 0.88, "center_x": 0.5}  # 타이틀 바로 아래에 위치하도록 설정
+                
+        # 안내 텍스트 레이블 (타이틀 바로 아래에 위치)
+        MDLabel:
+            text: "1종 2종 운전면허증 혹은\n원동기 면허증을 직접 촬영하여 확인합니다"
+            halign: "left"
+            valign: "middle"  # 세로 가운데 정렬
+            size_hint: None, None  # 크기 고정
+            width: dp(300)  # 레이블의 고정 너비
+            height: dp(60)  # 고정 높이
+            padding: [dp(0), dp(10), dp(0), dp(20)]  # 왼쪽 패딩 추가
+            pos_hint: {"top": 0.76, "center_x": 0.5}  # 타이틀 바로 아래에 위치하도록 설정
+
+        # 이미지 박스 (주민등록증 이미지)
+        MDBoxLayout:
+            size_hint: None, None
+            height: dp(180)
+            width: dp(320)
+            padding: dp(20)
+            spacing: dp(20)
+            pos_hint: {"center_x": 0.5, "center_y": 0.55}  # 화면 가운데에 위치
+            # md_bg_color: 1, 0, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+
+            Image:
+                source: "신분증이미지.png"  # 신분증 이미지를 여기에 표시
+                allow_stretch: True
+                keep_ratio: True
+
+        # 신분증 직접 촬영 버튼
+        MDRaisedButton:
+            text: "신분증 직접 촬영"
+            size_hint: (0.8, None)
+            height: dp(45)
+            font_size: sp(18)
+            md_bg_color: "#00289B"
+            pos_hint: {"center_x": 0.5, "center_y": 0.3}  # 화면 하단 쪽에 위치
+            on_press: root.switch_screen('reg_cam2')
+            elevation: 0

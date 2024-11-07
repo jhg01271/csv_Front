@@ -1,0 +1,118 @@
+#:import CustomTextField customwidgets
+<RegCam2>:
+    name: "reg_cam2"
+
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        # 노란색 배경 영역 (로고 이미지와 검정색 영역 포함)
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(53)
+            md_bg_color: "#FFFFFF"  # 노란색 배경
+            padding: [dp(5), dp(15), 0, 0]
+            spacing: dp(0)
+            pos_hint: {"center_x": 0.5}
+
+            # 왼쪽 빈 MDLabel
+            MDLabel:
+                size_hint_x: None
+                width: dp(73)
+
+            # 로고 이미지 중앙 정렬
+            Image:
+                source: 'csv_logo.png'
+                size_hint_y: None
+                md_bg_color: "#FFFFFF"
+                size: dp(40), dp(40)
+                padding: [dp(20), dp(15), 0, 0]
+                allow_stretch: True
+                pos_hint: {"center_x": 0.6,"center_y": 0.6}
+
+            # 오른쪽 빈 MDLabel
+            MDLabel:
+                size_hint_x: None
+                width: dp(73)
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(20)
+            padding: dp(20)
+            md_bg_color: "#F7F7F9"
+            # md_bg_color: 1, 0, 1, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: dp(90)
+                padding: [0, dp(10), 0, dp(10)]
+                # md_bg_color: 1, 0, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+                MDLabel:
+                    id: title_box
+                    text: "신분증 인증"
+                    halign: "left"
+                    font_size: sp(20)
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                MDLabel:
+                    id: text_box
+                    text: "15초 후에 인식이 시작됩니다"
+                    size_hint_y: None
+                    font_size: sp(17)
+                    text_color: "#656565"
+                    height: self.texture_size[1]
+            #BoxLayout:
+                #size_hint: (1, 0.6)
+                #Image:
+                    #id: web_cam
+                    #size_hint: (1, 0.6)
+                    #allow_stretch: True  # 이미지가 위젯 크기에 맞게 늘어나도록 설정
+
+            Image:
+                id: web_cam
+                size_hint: (1, 0.3)  # 화면 전체를 채우도록 설정
+                allow_stretch: True  # 이미지가 위젯 크기에 맞게 늘어나도록 설정
+                # keep_ratio: False  # 이미지 비율을 유지하지 않도록 설정
+                # canvas.before:
+                #     Color:
+                #         rgba: 1, 0, 0, 1  # 빨강색
+                    # Rectangle:
+                    #     pos: self.pos
+                    #     size: self.size
+
+
+            # 스크롤 가능한 hide_box
+            MDScrollView:
+                size_hint_y: None
+                height: dp(120)
+                
+                MDBoxLayout:
+                    id: hide_box
+                    orientation: 'vertical'
+                    md_bg_color: "#FFFFFF"
+                    radius: [10, 10, 10, 10]
+                    padding: [dp(10), dp(15), dp(8) , dp(15)]  
+                    adaptive_height: True
+
+                    # 주의 사항 안내
+                    MDLabel:
+                        text: "<주의 사항>"
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Error"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        font_size: sp(12)
+
+                    # 추가 텍스트
+                    MDLabel:
+                        text: "반드시 원본을 준비하셔야 합니다. \n원동기운전면허증 혹은 1종 2종 운전면허증을 정면을 바라보고 해주세요.\n신분증 촬영 후 신분증 정보와 실제 정보가 일치하는지 확인부탁드립니다.\n고객 확인 절차 진행 중 어려움을 겪으시는 경우 고객센터를 통해 문의해주시길 바랍니다."
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Secondary"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        font_size: sp(12)

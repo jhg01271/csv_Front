@@ -1,0 +1,148 @@
+<Index>:
+    name: "index"
+
+    MDBoxLayout:
+        orientation: 'vertical'
+
+        # 노란색 배경 영역 (로고 이미지와 검정색 영역 포함)
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(53)
+            md_bg_color: "#FFFFFF"  # 노란색 배경
+            padding: [dp(5), dp(15), 0, 0]  # 위로 약간 이동시키기 위해 padding 조정
+            spacing: dp(0)
+            # 내부 패딩 설정 (왼쪽, 위, 오른쪽, 아래)
+            pos_hint: {"center_x": 0.5}  # 수평 중앙에 위치
+
+            # 왼쪽 빈 MDLabel (이미지를 중앙으로 배치하는 데 도움)
+            MDLabel:
+                size_hint_x: None
+                width: dp(73)
+                # md_bg_color: "#000000"
+
+            # 로고 이미지 중앙 정렬 및 y축 조정
+            Image:
+                source: 'csv_logo.png'
+                size_hint_y: None
+                md_bg_color: "#FFFFFF"
+                size: dp(40), dp(40)
+                padding: [dp(20), dp(15), 0, 0]  # 위로 약간 이동시키기 위해 padding 조정
+                allow_stretch: True
+                pos_hint: {"center_x": 0.6,"center_y": 0.6}  # y축 위치 조정
+
+            # 검정색 영역을 오른쪽 끝에 위치
+            MDTopAppBar:
+                md_bg_color: "#FFFFFF"
+                size_hint: None, None
+                #width: dp(120)  # 너비 지정
+                specific_text_color: "#656565"
+                padding: [dp(-15), dp(-15), 0, 0]
+                pos_hint: {"center_x": 0.5, "center_y": 0.5}  # 오른쪽 끝에 배치
+                right_action_items: [["account-circle-outline", lambda x: root.switch_screen('mypage'), "마이페이지"], ["logout", lambda x: root.logout(), "로그아웃"]]
+                elevation: 0
+
+        # 메인 콘텐츠 영역 (MDTopAppBar 아래)
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(20)
+            padding: dp(20)
+            md_bg_color: "#F7F7F9"
+
+            MDBoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(40)
+                padding: dp(10)
+                spacing: dp(10)
+                #md_bg_color: 1, 0, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+
+            # 메인 화면의 레이블
+            MDLabel:
+                id: mem_text
+                text: "안녕하세요"
+                halign: "left"
+                theme_text_color: "Primary"
+                font_size: sp(24)
+
+            MDLabel:
+                id: today
+                text: "2024.10.04 (금)"
+                halign: "left"
+                font_size: sp(18)
+                text_color: "#00289B"
+
+            # 운행 시작 버튼
+            MDRaisedButton:
+                text: "운행 시작"
+                size_hint: (0.9, 0.4)
+                height: dp(48)
+                font_size: sp(18)
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: "#00289B"
+                elevation: 0
+                on_release: root.show_start_confirmation_popup()
+
+            # 대여 기록 버튼
+            MDRaisedButton:
+                text: "대여 기록"
+                size_hint: (0.9, None)
+                height: dp(48)
+                font_size: sp(18)
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: "#FFFFFF"
+                line_color: "#00289B"
+                text_color: "#00289B"
+                elevation: 0
+                on_release: root.switch_screen('rental_log')
+
+            # 흰색 라운드 박스를 스크롤 가능하게 하는 MDScrollView
+            MDScrollView:
+                size_hint_y: None
+                height: dp(200)  # 스크롤 뷰의 고정 높이 설정
+                scroll_y: 1.5  # 스크롤 초기 위치를 최상단으로 설정
+                
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(10), dp(15), dp(8) , dp(15)] 
+                    # padding: dp(8)
+                    spacing: dp(8)
+                    adaptive_height: True  # 콘텐츠의 높이에 따라 자동 조정
+                    
+                    md_bg_color: "#FFFFFF"  # 흰색 배경
+                    radius: [10, 10, 10, 10]  # 라운드 처리
+
+                    # 사용 방법 안내
+                    MDLabel:
+                        #md_bg_color: 1, 1, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+                        text: "<사용 방법>\n- “운행 시작”을 누른 다음에, 서비스 시작 확인에 있는 “예”를 눌러주세요.\n- 헬멧 착용 여부와 사용자 확인을 위하여 정면을 바라봐주세요.\n- “인증 완료“을 눌러 안전 운전하세요. \n- 운행 중 재인증 하실때 “운행 일시정지＂를 통해 잠시 멈출 수 있습니다."
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Secondary"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]  # 텍스트 높이에 맞춰 자동 조정
+                        font_size: sp(12)
+
+                    # 주의 사항 안내
+                    MDLabel:
+                        #md_bg_color: 1, 1, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+                        text: "<주의 사항>"
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Error"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]  # 텍스트 높이에 맞춰 자동 조정
+                        font_size: sp(12)
+
+                    MDLabel:
+                        #md_bg_color: 1, 1, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
+                        text: "- 사용자 확인을 위한 시간이 다소 소요될 수 있습니다. \n- 운행 중 재인증은 30분 이후 시작됩니다. \n- 경고음이 나올 수 있으니 스피커 크기를 조절해주세요. \n- 화면에 얼굴이 올바르게 인식될 수 있도록 정면을 바라봐주세요. \n- 지속적으로 인증이 안될 시 고객센터로 문의 주세요."
+                        halign: "left"
+                        valign: "top"
+                        theme_text_color: "Secondary"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]  # 텍스트 높이에 맞춰 자동 조정
+                        font_size: sp(12)
