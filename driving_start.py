@@ -50,22 +50,30 @@ class DrivingStart(MDScreen):
         self.face_verification_attempts = 0
         self.helmet_result_override = False
         self.verification_result_override = False
-        self.verification_result = None
+        self.verification_result = 0
+        self.capture = None # OpenCV로 카메라 초기화
         self.initialize_camera()
 
     def initialize_camera(self):
         """
         카메라를 초기화하는 메서드.
         """
-        # 기존 카메라 리소스 해제
-        if hasattr(self, 'camera') and self.camera.play:
-            self.camera.play = False  # 카메라 중지
-            print("기존 카메라 리소스 해제 완료.")
+        # 기존 카메라 해제
+        if self.capture and self.capture.isOpened():
+            print('Capturing !!!!!!!!! 캡쳐가 켜져 있어서 기존 캡쳐를 해제합니다.')
+            self.capture.release()
 
-        # 새로운 카메라 초기화
-        self.camera = self.ids.camera  # .kv 파일에서 정의한 카메라 위젯을 가져옴
-        self.camera.play = True  # 카메라가 자동으로 켜지도록 설정
-        print("카메라 초기화 완료.")
+          # 카메라 장치 해제
+        # self.capture = cv2.VideoCapture(0)  # OpenCV로 카메라 초기화
+        # # 기존 카메라 리소스 해제
+        # if hasattr(self, 'camera') and self.camera.play:
+        #     self.camera.play = False  # 카메라 중지
+        #     print("reset initialize_camera1 : 기존 카메라 리소스 해제 완료.")
+        #
+        # # 새로운 카메라 초기화
+        # self.camera = self.ids.camera  # .kv 파일에서 정의한 카메라 위젯을 가져옴
+        # self.camera.play = True  # 카메라가 자동으로 켜지도록 설정
+        # print("reset initialize_camera2 : 카메라 초기화 완료.")
 
     # 화면이 사용자에게 보여질 때 실행되는 메서드 (화면이 활성화될 때 호출됨)
     def on_enter(self, *args):
@@ -74,7 +82,9 @@ class DrivingStart(MDScreen):
         self.perfect_count = 0
         # 헬멧 감지 앱 초기화
         if not self.cam_app:
-            self.cam_app = HelmetDetectionApp(camera=self.camera)
+            app = MDApp.get_running_app()
+            mem_id = app.store.get('session')['mem_id']
+            self.cam_app = HelmetDetectionApp(web_cam=self.ids.web_cam3, mem_id=mem_id) # OpenCV 캡처 객체 전달
             print("헬멧 감지 앱 초기화 완료.")
 
         Clock.schedule_once(self.check_helmet_detection, 2.0)
@@ -85,7 +95,9 @@ class DrivingStart(MDScreen):
         self.perfect_count = 1
         # 헬멧 감지 앱 초기화
         if not self.cam_app:
-            self.cam_app = HelmetDetectionApp(camera=self.camera)
+            app = MDApp.get_running_app()
+            mem_id = app.store.get('session')['mem_id']
+            self.cam_app = HelmetDetectionApp(web_cam=self.ids.web_cam3, mem_id=mem_id)
             print("헬멧 감지 앱 초기화 완료.")
 
         Clock.schedule_once(self.check_helmet_detection, 2.0)
@@ -104,10 +116,10 @@ class DrivingStart(MDScreen):
                 print(f'mem_id : {mem_id}')
 
             # 카메라 앱이 실행 중이고, 헬멧이 감지되었다면
-            if self.cam_app and self.cam_app.request_helmet_detection_result() != 'null':
-                print(f"check_helmet_detection : self.cam_app.request_helmet_detection_result : =========================================")
+            if self.cam_app and self.cam_app.process_frame(0) != 'null':
+                print(f"check_helmet_detection : self.cam_app.process_frame(0) : =========================================")
                 self.helmet_detected = True  # 헬멧 감지 여부를 True로 설정
-                helmet_result = self.cam_app.request_helmet_detection_result()  # 헬멧 감지 결과를 가져옴
+                helmet_result = self.cam_app.process_frame(0)  # 헬멧 감지 결과를 가져옴
                 print(f"check_helmet_detection : helmet_result : {helmet_result}")
 
                 # helmet_result_override가 True이면 헬멧이 감지된 것으로 처리
@@ -150,7 +162,11 @@ class DrivingStart(MDScreen):
                     # if self.perfect_count == 0:
                     #     database.insert_rental_log(mem_id, helmet_result, current_location)
                     #     self.perfect_count += 1
-                    self.start_identity_verification()
+                    if self.perfect_count == 0:
+                        # 최초로 헬멧 탐지 시에만 헬멧 탐지 성공 팝업 실행
+                        Clock.schedule_once(lambda dt: self.popup_manager.show_helmet_verification_success_popup(), 1.0)  # 2초 후에 팝업 실행
+                    else:   
+                        self.start_identity_verification()
             else:
                 print("헬멧 감지 앱이 초기화되지 않았거나 헬멧이 감지되지 않았습니다.")
         finally:
@@ -170,9 +186,12 @@ class DrivingStart(MDScreen):
                 
                 # 카메라를 켜고 화면에 표시
                 self.initialize_camera()
-                
+                # 앞의 cam_app을 초기화하고 다음으로 넘아갑니다.
+                self.stop_camera()
+                self.cam_app = None
+
                 # 얼굴 인식 앱 시작
-                self.cam_app2 = Compare_with_last_cropped_image(camera=self.camera, mem_id=mem_id)
+                self.cam_app2 = Compare_with_last_cropped_image(web_cam=self.ids.web_cam3, mem_id=mem_id)
                 # print(f"start_identity_verification : self.cam_app2 : ========================================")
                 
                 Clock.schedule_once(self.check_same_person, 0)
@@ -203,10 +222,11 @@ class DrivingStart(MDScreen):
                     # 최초 실행시 얼굴 인식 결과 가져오기
                     print(f"안면인식 최초시작 Start first process_frame : =========================================")
                     verification_result = self.cam_app2.process_frame(0)
+                    print(f"check_same_person : verification_result33333 : {verification_result}=========================================")
                     
                 # 얼굴 인식 성공 verification_result == 1
                 if verification_result == 1:
-                    print(f"check_same_person : verification_result : {verification_result}=========================================")
+                    print(f"check_same_person : verification_result11111 : {verification_result}=========================================")
                     self.ids.btn_verify.disabled = False  # 인증 버튼을 활성화
                     result = 0     
                     model_result = [1,1] 
@@ -226,7 +246,7 @@ class DrivingStart(MDScreen):
                 # 얼굴 인식 실패 verification_result == 0
                 else:
                     # verification_result == 0
-                    print(f"check_same_person : verification_result : {verification_result}=========================================")
+                    print(f"check_same_person : verification_result00000 : {verification_result}=========================================")
                     result = 1
                     model_result = [1,0] 
                     self.result_list.append(1)
@@ -277,8 +297,8 @@ class DrivingStart(MDScreen):
             self.stop_all_running_processes()
             
             # 푸시 알림 보내기
-            show_system_notification("인증 서비스 실행중", "30분마다 재인증을 시작합니다.")
-            show_kivy_popup("인증 서비스 실행중", "30분마다 재인증을 시작합니다.", delay=1)
+            show_system_notification("인증 서비스 실행중", "1분마다 재인증을 시작합니다.")
+            show_kivy_popup("인증 서비스 실행중", "1분마다 재인증을 시작합니다.", delay=1)
             
             self.ids.title_box.text = "운행중 인증확인"
             self.ids.text_box.text = "헬멧 착용한 상태를 유지해주세요"
@@ -337,7 +357,7 @@ class DrivingStart(MDScreen):
             print("스케줄링된 이벤트가 중단되고 초기화되었습니다.")
 
         # 버튼 상태를 초기화
-        print("튼 상태 초기화 중...")
+        print("버튼 상태 초기화 중...")
         self.ids.title_box.text = "운행전 인증확인"
         self.ids.text_box.text = "헬멧 착용 후 얼굴을 인식해주세요"
         self.ids.hide_box.height = dp(120)
@@ -357,14 +377,14 @@ class DrivingStart(MDScreen):
         카메라를 재시작하는 메서드.
         """
         if self.cam_app:
-            self.cam_app.camera.play = True  # 헬멧 감지 앱의 카메라 시작
-            self.cam_app.is_running = True  # 실행 상태 업데이트
+            # self.cam_app.camera.play = True  # 헬멧 감지 앱의 카메라 시작
+            # self.cam_app.is_running = True  # 실행 상태 업데이트
             # Clock.schedule_once(self.cam_app.process_frame, 0)  # 프레임 처리 시작
             print("헬멧 감지 카메라 시작됨.")
 
         if self.cam_app2:
-            self.cam_app2.camera.play = True  # 얼굴 인식 앱의 카메라 시작
-            self.cam_app2.is_running = True  # 실행 상태 업데이트
+            # self.cam_app2.camera.play = True  # 얼굴 인식 앱의 카메라 시작
+            # self.cam_app2.is_running = True  # 실행 상태 업데이트
             # Clock.schedule_once(self.cam_app2.process_frame, 0)  # 프레임 처리 시작
             print("얼굴 인식 카메라 시작됨.")
 

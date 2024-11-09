@@ -44,11 +44,28 @@ class PopupManager:
 
     def show_helmet_warning_popup(self):
         self.show_warning_popup(
-            title='헬멧 인식 실패',
+            title='헬멧 탐지 실패',
             text="헬멧이 인식되지 않습니다.\n헬멧을 착용하시고 재인증 진행해주세요!",
             on_retry=self.retry_and_close_popup,
             on_help=self.show_help_popup
         )
+        
+    def show_helmet_verification_success_popup(self):
+        self.dialog = MDDialog(
+            title='헬멧 탐지 성공',
+            text="헬멧이 인식되었습니다.\n페이스 인식을 시작합니다.",
+            auto_dismiss=False,
+            buttons=[
+                MDRaisedButton(
+                    text="확인",
+                    md_bg_color="#00289B",
+                    text_color="#FFFFFF",
+                    elevation=0,
+                    on_release=self.success_and_close_popup
+                ),
+            ],
+        )
+        self.dialog.open()
 
     def show_face_verification_failed_popup(self):
         self.show_warning_popup(
@@ -58,7 +75,17 @@ class PopupManager:
             on_help=None
         )
 
-###########################################[헬멧 인식 실패 팝업 재인증 버튼]###########################################
+###########################################[헬멧 탐지 성공 팝업 확인 버튼]###########################################
+    def success_and_close_popup(self, *args):
+        if self.dialog:
+            self.dialog.dismiss()
+            self.parent.cam_app.capture.release()
+            self.parent.cam_app = None
+            Clock.schedule_once(self.parent.start_identity_verification, 1.0)  # start_identity_verification 실행
+
+
+
+###########################################[헬멧 탐지 실패 팝업 재인증 버튼]###########################################
     def retry_and_close_popup(self, *args):
         if self.dialog:
             self.dialog.dismiss(force=True)  # 현재 열려 있는 다이얼로그 닫기
@@ -93,7 +120,7 @@ class PopupManager:
             self.repeat_beep_event.cancel()
             self.repeat_beep_event = None
 
-###########################################[헬멧 인식 실패 팝업 고객센터 버튼]###########################################
+###########################################[헬멧 탐지 실패 팝업 고객센터 버튼]###########################################
     def show_help_popup(self, *args):
         if self.dialog:
             self.dialog.dismiss()

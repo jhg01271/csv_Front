@@ -28,10 +28,11 @@ class RegCam(MDScreen):
             if self.cam_app3.cropped_img_filename:
                 self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
                 self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
-            
-            self.manager.current = 'signup'  # 기본적으로 signup으로 이동
-
+                print(f"***reg_cam.py*** self.cam_app3.cropped_img_filename: {self.cam_app3.cropped_img_filename} self.cam_app3.regno1: {self.cam_app3.regno1} self.cam_app3.regno2: {self.cam_app3.regno2}")
+            # self.cam_app3.capture.release()  # 카메라 장치 해제
             self.cam_app3 = None
+
+        self.manager.current = 'signup'
 
     def switch_screen(self, screen_name):
         self.manager.current = screen_name

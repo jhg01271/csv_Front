@@ -36,7 +36,7 @@ class CamApp(MDApp):
         self.update_event = Clock.schedule_interval(self.display_camera, 1.0 / 33.0)
 
         # 15초 후에 얼굴 검출 시작
-        Clock.schedule_once(lambda dt: self.start_face_detection(), 15)
+        Clock.schedule_once(lambda dt: self.start_face_detection(), 10)
 
     def display_camera(self, *args):
         ret, frame = self.capture.read()
@@ -85,12 +85,14 @@ class CamApp(MDApp):
                 ### 여기 위까지가 얼굴이 있는 원본 이미지 저장 및 서버 전송 완료
                 
                 self.cropped_img_filename, self.regno1, self.regno2 = fetch_and_crop_latest_image(self.mem_id)
+                print(f'{self.cropped_img_filename, self.regno1, self.regno2}')
                 if self.cropped_img_filename:
                     print(f"크롭된 얼굴 이미지 파일명: {self.cropped_img_filename} self.regno1: {self.regno1} self.regno2: {self.regno2}")
                     Clock.schedule_once(self.stop_camera, 2)
                     return
         else:
             print("얼굴을 찾을 수 없음")
+            Clock.schedule_once(self.stop_camera, 1)
 
         # Kivy의 Image 위젯에 카메라 프레임을 표시하기 위해 텍스처로 변환
         buf = cv2.flip(display_frame, 0).tobytes()
@@ -119,6 +121,19 @@ class CamApp(MDApp):
     def switch_to_signup(self):
         print("signup 페이지로 전환")
         self.manager.current = "signup"  # signup 화면으로 전환
+
+    def on_leave(self):
+        if self.cam_app3:
+            self.cam_app3.stop_camera()
+            self.ids.web_cam.clear_widgets()
+            if self.cam_app3.cropped_img_filename:
+                self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
+                self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
+                print(f"***reg_models.py*** self.cam_app3.cropped_img_filename: {self.cam_app3.cropped_img_filename} self.cam_app3.regno1: {self.cam_app3.regno1} self.cam_app3.regno2: {self.cam_app3.regno2}")
+            
+            self.cam_app3.capture.release()  # 카메라 장치 해제
+            self.cam_app3 = None
+
 
 
 # 얼굴 검출 후 원본을 저장하는 함수
@@ -171,7 +186,7 @@ def fetch_and_crop_latest_image(mem_id):
         return cropped_img_filename, regno1, regno2
     else:
         print("서버에서 이미지를 가져오는 데 실패했습니다.")
-        return None
+        return None, None, None
 
 # 가장 최근의 이미지를 크롭하여 저장하는 함수
 def crop_latest_image(img,mem_id):

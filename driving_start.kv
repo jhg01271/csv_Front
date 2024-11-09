@@ -60,13 +60,23 @@
                     font_size: sp(17)
                     text_color: "#656565"
                     height: self.texture_size[1]
-            BoxLayout:
-                id: camera_box
-                size_hint: (1, 0.6)
-                Camera:
-                    id: camera
-                    resolution: (640, 480)
-                    play: False  # 카메라가 자동으로 켜지지 않도록 설정
+
+            Image:
+                id: web_cam3
+                size_hint: (1, 0.3)  # 화면 전체를 채우도록 설정
+                allow_stretch: True  # 이미지가 위젯 크기에 맞게 늘어나도록 설정
+
+            # BoxLayout:
+                #id: camera_box
+                #size_hint: (1, 0.6)
+                #Image:
+                    #id: camera
+                    #size_hint: (1, 0.3)  # 화면 전체를 채우도록 설정
+                    #allow_stretch: True  # 이미지가 위젯 크기에 맞게 늘어나도록 설정
+                # Camera:
+                    # id: camera
+                    # resolution: (640, 480)
+                    # play: False  # 카메라가 자동으로 켜지지 않도록 설정
 
             # 스크롤 가능한 hide_box
             MDScrollView:

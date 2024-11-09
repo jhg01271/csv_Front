@@ -28,11 +28,16 @@ class RegCam2(MDScreen):
             if self.cam_app3.cropped_img_filename:
                 self.manager.get_screen('mypage').set_regimage(self.cam_app3.cropped_img_filename)
                 self.manager.get_screen('mypage').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
+                print(f"***reg_cam2.py*** self.cam_app3.cropped_img_filename: {self.cam_app3.cropped_img_filename} self.cam_app3.regno1: {self.cam_app3.regno1} self.cam_app3.regno2: {self.cam_app3.regno2}")
             
-            self.manager.current = 'mypage'
-
-
+            # 카메라 장치 해제
+            if self.cam_app3.capture and self.cam_app3.capture.isOpened():
+                self.cam_app3.capture.release()
+                print("***reg_cam2.py*** release camera")
+            
             self.cam_app3 = None
+
+        self.manager.current = 'mypage'
 
     def switch_screen(self, screen_name):
         self.manager.current = screen_name
