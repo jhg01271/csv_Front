@@ -79,7 +79,7 @@ class Index(MDScreen):
     def show_start_confirmation_popup(self):
         self.dialog = MDDialog(
             title='서비스 시작 확인',
-            text="헬멧탐지와 명의도용 인식 서비스를 시작하겠습니다. 계속하시겠습니까?",
+            text="헬멧탐지와 안면 인식 서비스를 시작하겠습니다. 계속하시겠습니까?",
             buttons=[
                 MDRaisedButton(
                     text="예",

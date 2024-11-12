@@ -7,28 +7,31 @@ from kivy.uix.camera import Camera  # Camera는 카메라 비디오 스트림을
 from kivy.clock import Clock  # Clock은 주기적으로 함수를 실행하는 데 사용됩니다.
 from kivy.graphics.texture import Texture  # Texture는 화면에 이미지를 그리기 위한 객체입니다.
 from kivy.storage.jsonstore import JsonStore  # JsonStore는 데이터를 JSON 형식으로 저장하는 데 사용됩니다.
-from deepface import DeepFace  # DeepFace는 얼굴 인식 및 비교를 위한 라이브러리입니다.
+from deepface import DeepFace  # DeepFace는 안면 인식 및 비교를 위한 라이브러리입니다.
 import os  # os 모듈은 파일과 디렉토리를 관리하는데 사용됩니다.
 from kivymd.app import MDApp
 import requests
 import time
 
-# Compare_with_last_cropped_image는 얼굴 인식을 통해 비교하는 애플리케이션입니다.
+# Compare_with_last_cropped_image는 안면 인식을 통해 비교하는 애플리케이션입니다.
 class Compare_with_last_cropped_image(MDApp):
-    def __init__(self, web_cam, mem_id=None, **kwargs):
+    def __init__(self, web_cam, mem_id=None, verification_result_override=False, **kwargs):
         super().__init__(**kwargs)
         # self.camera = camera  # 외부에서 주입받은 카메라 객체
         self.web_cam = web_cam  # OpenCV VideoCapture 객체
         self.capture = None
         self.update_event = None  # 업데이트 이벤트를 저장할 변수
-        self.mem_id = mem_id
-        self.verification_result_override = False
+        self.store = JsonStore('session.json')  # 이 줄을 추가하여 store 속성을 초기화
+        self.comparison_result = None
+        self.result_callback = None  # 결과를 전달받을 콜백 함수
         # self.is_running = False  # 실행 상태를 저장하는 변수 초기화
-        self.call_count = 0  # 호출 횟수를 저장하는 변수 추가
-        self.comparison_result = False
+        # self.call_count = 0  # 호출 횟수를 저장하는 변수 추가
+        self.verification_result_override = verification_result_override
+        self.mem_id = mem_id
+        self.is_stopping = False  # stop 호출 중복 방지를 위한 플래그 추가
+        self.id_theft = False
 
         # JSON 파일을 사용하여 세션 정보를 저장
-        self.store = JsonStore('session.json')  # 이 줄을 추가하여 store 속성을 초기화
 
         # OpenCV로 카메라 연결
         self.capture = cv2.VideoCapture(0)
@@ -42,7 +45,7 @@ class Compare_with_last_cropped_image(MDApp):
         # Clock.schedule_once(self.process_frame, 1.0)  # 1초 후에 모델을 실행
 
     # def start_model(self, dt):
-        Clock.schedule_once(self.process_frame, 0)
+        Clock.schedule_once(self.process_frame, 3.0)
 
     def display_camera(self, *args):
         ret, frame = self.capture.read()
@@ -55,10 +58,14 @@ class Compare_with_last_cropped_image(MDApp):
         img_texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
         img_texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
         self.web_cam.texture = img_texture
-    
+
+    # 결과 콜백 함수를 설정
+    def set_result_callback(self, callback):
+        self.result_callback = callback
+ 
 # 카메라에서 프레임을 받아 처리하는 함수
     def process_frame(self, dt):
-        print(f"[START] process_frame : =======================================")
+        print(f"[START] 명의도용 process_frame : =======================================")
         ret, frame = self.capture.read()
         if not ret or frame is None:
             print("compare_model...카메라에서 프레임을 가져올 수 없습니다.")
@@ -88,17 +95,34 @@ class Compare_with_last_cropped_image(MDApp):
         #     image = cv2.cvtColor(image_data, cv2.COLOR_RGBA2BGR)
 
         if len(faces) > 0:
+            print(f"명의도용 얼굴 검출 성공")
             (x, y, w, h) = faces[0]  # 첫 번째 얼굴의 좌표를 가져옵니다
             # 이미지 파일 이름 생성
             # 이미지를 메모리 내에서 인코딩하여 서버로 전송
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             img_filename = f'current_image_{timestamp}_{self.mem_id}.png'
             _, img_encoded = cv2.imencode('.png', frame)
-            send_image_to_server(img_encoded.tobytes(), img_filename)
+            response = send_image_to_server(img_encoded.tobytes(), img_filename)
+            
+            # ID 도용 여부 확인
+            if response.get('message') == 'ID_theft':
+                self.id_theft = True
+                print(f"명의도용 ID 도용 탐지 : {self.id_theft}")
+                
+                self.comparison_result = 3
+                # # 콜백을 통해 결과 전달
+                # if self.result_callback:
+                #     self.result_callback(self.comparison_result)
+                #     self.stop()
+                # return
 
-            print(f'comparison_result 바로 위 : {self.mem_id}')
+            # 신분증이 감지되지 않았으므로 안면 인식을 진행합니다.
+            # 기존의 안면 인식 수행 로직...
             # 현재 카메라 이미지와 마지막 저장된 이미지 비교
-            comparison_result = self.compare_with_last_cropped_image(self.mem_id)
+            if not self.id_theft:
+                self.comparison_result = self.compare_with_last_cropped_image(self.mem_id)           
+            # 현재 카메라 이미지와 마지막 저장된 이미지 비교
+            # self.comparison_result = self.compare_with_last_cropped_image(self.mem_id)
         
             # # 텍스처가 이미 업데이트된 경우 다시 반전되지 않도록 확인
             # if not hasattr(self, 'flipped_texture') or self.flipped_texture is None:
@@ -112,21 +136,67 @@ class Compare_with_last_cropped_image(MDApp):
             #     self.camera.texture = texture
             #     # 텍스처가 한 번만 반전되었음을 기록
             #     self.flipped_texture = True
-                
-            # self.stop()
+            
+            # 고객센터를 통한 안면 인식 결과를 1로 만드는 경우라면
+            if self.verification_result_override:
+                print(f"************************ self.verification_result_override : {self.verification_result_override}")
+                self.comparison_result = 1
+            #     # self.helmet_detected = helmet_detected
+            #     print(f"[END] process_frame : helmet_detected : {self.helmet_detected}=======================================")
+            print(f"************************ verification_result : {self.comparison_result}")
+            print(f"************************ self.result_callback: {self.result_callback}")
 
-            # 비교 결과 반환
-            return comparison_result
+            # 콜백을 통해 결과 전달
+            if self.result_callback:
+                self.result_callback(self.comparison_result)
+
+            # stop 호출 중복 방지
+            if not self.is_stopping:
+                Clock.schedule_once(self.stop, 2.0)
+                
+            self.stop()
         else:
             print(f"[END] process_frame : NO FACE======================================")
-            Clock.schedule_once(self.process_frame, 0)
+            self.comparison_result = 2
+            if self.result_callback:
+                self.result_callback(self.comparison_result)
+            if not self.is_stopping:
+                Clock.schedule_once(self.stop, 2.0)
             
+    def get_comparison_result(self):
+        print(f"명의도용 get_comparison_result : {self.comparison_result}")
+    
+        # verification_result_override가 True인 경우, 결과를 강제로 1로 설정
+        if self.verification_result_override:
+            print("[고객센터 인증] verification_result_override가 True이므로 comparison_result를 1로 설정합니다.")
+            self.comparison_result = 1    
+        return self.comparison_result
 
+    def pause(self, *args):
+        # stop 중복 실행 방지
+        if self.is_stopping:
+            return
+        print(f"[START] compare_model pause : =======================================")
+        self.is_stopping = True  # stop 실행 중 표시
+
+        Clock.unschedule(self.process_frame)
+        if self.update_event:
+            Clock.unschedule(self.update_event)
+
+        # if self.capture and self.capture.isOpened():
+        #     self.capture.release()
+        print("명의도용 process_frame만 일시정지되었습니다.") 
 
     # 앱을 일시 정지하는 함수
-    def stop(self):
-        print(f"compare_model stop=========================================")
+    def stop(self, *args):
+        # stop 중복 실행 방지
+        if self.is_stopping:
+            return
+        print(f"[START] compare_model stop : =======================================")
+        self.is_stopping = True  # stop 실행 중 표시
+
         # 업데이트 중지
+        Clock.unschedule(self.process_frame)  # 프레임 처리 중지
         if self.update_event:
             Clock.unschedule(self.update_event)  # 업데이트 중지
         # if self.is_running:
@@ -135,28 +205,25 @@ class Compare_with_last_cropped_image(MDApp):
         if self.capture and self.capture.isOpened():
             self.capture.release()
         print("카메라가 정지되었습니다.")
-        Clock.unschedule(self.process_frame)  # 프레임 처리 중지
         
-    # 얼굴 인식 확인 요청
+    # 안면 인식 확인 요청
     def compare_with_last_cropped_image(self, mem_id):
         url = 'http://127.0.0.1:8000/drive/verify_identity/'
         data = {'mem_id': mem_id}
-        print(f'11111111111111111111Verify identity : {data}')
         try:
             response = requests.post(url, json=data)
-            print(f'2222222222222222222222 identity : {data}')
             response.raise_for_status()
             result = response.json()
             return result.get('verified', 'null')
         except requests.exceptions.RequestException as e:
-            print(f"얼굴 인식 확인 요청 실패: {e}")
+            print(f"안면 인식 확인 요청 실패: {e}")
             return 0
     
       
 ####### [디장고 서버에 이미지 보내기] ######## Django 서버로 이미지를 전송하는 함수
 def send_image_to_server(img_data, img_filename):
     # 이미지 파일을 전송할 서버의 URL 주소
-    url = 'http://127.0.0.1:8000/drive/upload_image/'
+    url = 'http://127.0.0.1:8000/drive/upload_identity_image/'
     
     # 서버에 전송할 파일 정보: 'image'라는 키에 img_filename 경로의 파일을 바이너리 읽기 모드('rb')로 엽니다.
     files = {'image': (img_filename, img_data, 'image/png')}
@@ -174,9 +241,10 @@ def send_image_to_server(img_data, img_filename):
         
         # 요청이 성공적으로 완료된 경우 출력 메시지
         print("이미지 서버 전송 성공")
+        return response.json()
     
     # 만약 전송 과정에서 오류가 발생하면 예외를 잡아 오류 내용을 출력
     except requests.exceptions.RequestException as e:
         # 요청이 실패했을 때 실패 원인과 함께 에러 메시지를 출력
         print(f"이미지 서버 전송 실패: {e}")
-          
+        return {'status': 'error', 'message': '이미지 서버 전송 실패'}

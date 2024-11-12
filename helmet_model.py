@@ -10,18 +10,20 @@ import time
 
 # 앱을 정의하는 HelmetDetectionApp 클래스입니다. Kivy의 App 클래스를 상속받습니다.
 class HelmetDetectionApp(MDApp):
-    def __init__(self, web_cam, mem_id, **kwargs):
+    def __init__(self, web_cam, mem_id, helmet_result_override=False, **kwargs):
         super().__init__(**kwargs)
         self.web_cam = web_cam  # OpenCV VideoCapture 객체
         self.capture = None
         self.update_event = None  # 업데이트 이벤트를 저장할 변수
         self.store = JsonStore('session.json')  # 세션 데이터를 JSON 파일로 저장하기 위해 JsonStore를 사용합니다
-        self.helmet_detected = False  # 헬멧 감지 여부를 저장하는 변수
+        self.helmet_detected = None
+        self.result_callback = None
         # self.is_running = False  # 카메라가 실행 중인지 여부를 저장하는 변수
         # self.model = None  # YOLO 모델을 저장하는 변수
         # self.camera = camera  # 외부에서 주입받은 카메라 객체
-        self.helmet_result_override = False  # 추가된 속성
+        self.helmet_result_override = helmet_result_override  # 추가된 속성
         self.mem_id = mem_id
+        self.is_stopping = False  # stop 호출 중복 방지를 위한 플래그 추가
 
         # OpenCV로 카메라 연결
         self.capture = cv2.VideoCapture(0)
@@ -31,7 +33,8 @@ class HelmetDetectionApp(MDApp):
 
         # 카메라를 먼저 켭니다
         # self.camera.play = True  # 카메라를 켭니다
-        Clock.schedule_once(self.start_model, 1.0)  # 1초 후에 모델을 실행
+        # Clock.schedule_once(self.start_model, 1.0)  # 1초 후에 모델을 실행
+        Clock.schedule_once(self.process_frame, 5.0)
 
     def display_camera(self, *args):
         ret, frame = self.capture.read()
@@ -45,38 +48,42 @@ class HelmetDetectionApp(MDApp):
         img_texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
         self.web_cam.texture = img_texture
 
-    def start_model(self, dt):
-        print(f"[START] start_model : =======================================")
-        # 얼굴 검출을 위한 업데이트
-        # Clock.unschedule(self.update_event)  # 기존 카메라 화면 업데이트 중지
-        Clock.schedule_once(self.process_frame, 1.0)
+    # 결과 콜백 함수를 설정
+    def set_result_callback(self, callback):
+        self.result_callback = callback
 
-        # # self.is_running = True
-        # self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        # Clock.schedule_once(self.process_frame, 1.0)
+    # def start_model(self, dt):
+    #     print(f"[START] start_model : =======================================")
+    #     # 얼굴 검출을 위한 업데이트
+    #     # Clock.unschedule(self.update_event)  # 기존 카메라 화면 업데이트 중지
+    #     Clock.schedule_once(self.process_frame, 1.0)
+
+    #     # # self.is_running = True
+    #     # self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    #     # Clock.schedule_once(self.process_frame, 1.0)
 
 
     # 카메라에서 프레임을 처리하는 메서드입니다 (헬멧 감지 수행)
     def process_frame(self, dt):
-        print(f"[START] process_frame : =======================================")
+        print(f"[START] 헬멧인식 process_frame : =======================================")
         ret, frame = self.capture.read()
         if not ret or frame is None:
-            print("카메라에서 프레임을 가져올 수 없습니다.")
-            self.stop_camera()
+            print("helmet_model...카메라에서 프레임을 가져올 수 없습니다.")
+            self.stop()
             return
 
         # 얼굴 검출
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        cascade_file = "haarcascade_frontalface_default.xml"  # 절대경로 대신 상대경로 사용
-        cascade = cv2.CascadeClassifier(cascade_file)
-        faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # cascade_file = "haarcascade_frontalface_default.xml"  # 절대경로 대신 상대경로 사용
+        # cascade = cv2.CascadeClassifier(cascade_file)
+        # faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
 
         # 화면에 표시할 프레임 복사
         display_frame = frame.copy()
 
         # 얼굴에 사각형 그리기 (화면 표시용)
-        for (x, y, w, h) in faces:
-            cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
+        # for (x, y, w, h) in faces:
+        #     cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
 
         # if self.camera.texture:
         #     texture = self.camera.texture  # 카메라의 텍스처를 가져옵니다
@@ -87,45 +94,88 @@ class HelmetDetectionApp(MDApp):
         #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # 이미지를 그레이스케일로 변환합니다
         #     faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)  # 얼굴을 검출합니다
 
-        if len(faces) > 0:
-            (x, y, w, h) = faces[0]  # 첫 번째 얼굴의 좌표를 가져옵니다
-            # 이미지 파일 이름 생성
-            timestamp = time.strftime("%Y%m%d-%H%M%S")
-            img_filename = f'helmet_{timestamp}_{self.mem_id}.png'
+        # if len(faces) > 0:
+        print(f"[START] 헬멧인식 process_frame : 얼굴 검출 성공")
+        # (x, y, w, h) = faces[0]  # 첫 번째 얼굴의 좌표를 가져옵니다
+        # 이미지 파일 이름 생성
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        img_filename = f'helmet_{timestamp}_{self.mem_id}.png'
 
-            # 이미지 인코딩 (메모리에서 바로 전송 준비)
-            _, img_encoded = cv2.imencode('.png', frame)
+        # 이미지 인코딩 (메모리에서 바로 전송 준비)
+        _, img_encoded = cv2.imencode('.png', frame)
 
-            # 서버로 전송
-            send_image_to_server(img_encoded.tobytes(), img_filename)
+        # 서버로 전송
+        send_image_to_server(img_encoded.tobytes(), img_filename)
 
-            # 헬멧 탐지 결과 요청
-            helmet_detected = self.request_helmet_detection_result(self.mem_id)
-            print(f"************************ Helmet detected: {helmet_detected}")
+        # 헬멧 탐지 결과 요청
+        self.helmet_detected = self.request_helmet_detection_result(self.mem_id)
 
-            # 고객센터를 통한 헬멧 결과를 1로 만드는 경우가 아니라면
-            if not self.helmet_result_override:
-                # self.helmet_detected = helmet_detected
-                print(f"[END] process_frame : helmet_detected : {helmet_detected}=======================================")
+        # 고객센터를 통한 헬멧 결과를 1로 만드는 경우라면
+        if self.helmet_result_override:
+            print(f"************************ self.helmet_result_override : {self.helmet_result_override}")
+            self.helmet_detected = 1
+        #     # self.helmet_detected = helmet_detected
+        #     print(f"[END] process_frame : helmet_detected : {self.helmet_detected}=======================================")
+        print(f"************************ Helmet detected: {self.helmet_detected}")
+        print(f"************************ self.result_callback: {self.result_callback}")
 
-            return helmet_detected
-        else:
-            print(f"[END] process_frame : NO FACE======================================")
-            Clock.schedule_once(self.process_frame, 0)
+        # 콜백을 통해 결과 전달
+        if self.result_callback:
+            self.result_callback(self.helmet_detected)
+
+        # stop 호출 중복 방지
+        if not self.is_stopping:
+            Clock.schedule_once(self.stop, 2.0)
+                
+            
+        # else:
+        #     print(f"[END] process_frame : NO FACE======================================")
+        #     # Clock.schedule_once(self.process_frame, 0)
+        #     self.helmet_detected = 2
+        #     if self.result_callback:
+        #         self.result_callback(self.helmet_detected)
+        #     self.stop()
 
 
-    def stop(self):
-        print(f"[START] stop : =======================================")
-        # 업데이트 중지
+    def get_helmet_detected(self):
+        print(f"헬멧탐지 get_helmet_detected : {self.helmet_detected}")
+        # return self.helmet_detected
+    
+        # helmet_result_override가 True인 경우, 결과를 강제로 1로 설정
+        if self.helmet_result_override:
+            print("[고객센터 인증] helmet_result_override가 True이므로 helmet_detected를 1로 설정합니다.")
+            self.helmet_detected = 1    
+        return self.helmet_detected
+
+    def pause(self, *args):
+        # stop 중복 실행 방지
+        if self.is_stopping:
+            return
+        print(f"[START] helmet_model pause : =======================================")
+        self.is_stopping = True  # stop 실행 중 표시
+
+        Clock.unschedule(self.process_frame)
         if self.update_event:
-            Clock.unschedule(self.update_event)  # 업데이트 중지
-        # if self.is_running:
-        # self.camera.play = False  # 카메라에서 영상을 받아오는것을 중지
-        # self.is_running = False  # 실행 상태를 저장하여 더이상 실행 중이 아님을 표시
+            Clock.unschedule(self.update_event)
+
+        # if self.capture and self.capture.isOpened():
+        #     self.capture.release()
+        print("헬멧 process_frame만 일시정지되었습니다.") 
+
+    def stop(self, *args):
+        # stop 중복 실행 방지
+        if self.is_stopping:
+            return
+        print(f"[START] helmet_model stop : =======================================")
+        self.is_stopping = True  # stop 실행 중 표시
+
+        Clock.unschedule(self.process_frame)
+        if self.update_event:
+            Clock.unschedule(self.update_event)
+
         if self.capture and self.capture.isOpened():
             self.capture.release()
         print("카메라가 정지되었습니다.")
-        Clock.unschedule(self.process_frame)  # 프레임 처리 중지
 
 
     def request_helmet_detection_result(self, mem_id):

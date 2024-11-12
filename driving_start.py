@@ -17,288 +17,237 @@ from openapi import get_current_location, get_random_location
 import subprocess  # subprocess 모듈을 가져옴
 from 푸시알림 import show_system_notification, show_kivy_popup
 
-# Django API 서버 URL 설정
 BASE_URL = "http://127.0.0.1:8000/drive"
 
-
-# .kv 파일에서 레이아웃을 정의한 것을 로드함 (화면 레이아웃)
 Builder.load_file('driving_start.kv')
 
-# DrivingStart 클래스는 화면을 관리하는 MDScreen을 상속받음
-class DrivingStart(MDScreen):    
+
+class DrivingStart(MDScreen):
     def __init__(self, **kwargs):
         # 부모 클래스인 MDScreen의 __init__ 메서드를 호출해 초기화 (MDScreen의 모든 속성과 기능을 사용 가능하게 함)
         super().__init__(**kwargs)
-        self.is_checking_helmet = False
-        self.is_verifying_identity = False
-
-        # self.cookies = SimpleCookie()
-        # self.popup_manager = PopupManager(self)  # PopupManager 인스턴스 생성 시 self를 parent로 전달
-
-
-    def initialize_state(self):
-        self.cookies = SimpleCookie()
-        self.popup_manager = PopupManager(self)
+        # self.is_checking_helmet = False
+        # self.is_verifying_identity = False
+        self.is_retrying = False  # 재시도 플래그 추가
+        self.retry_count = 0  # 재시도 횟수를 추적하는 변수 추가
         self.cam_app = None
-        self.cam_app2 = None
-        self.helmet_detected = False
-        self.helmet_result = 0
-        self.helmet_result_count = 0
-        self.dialog = None
-        self.count = 0
-        self.result_list = []
-        self.face_verification_attempts = 0
+        self.helmet_result = None
         self.helmet_result_override = False
+        self.verification_result = None
         self.verification_result_override = False
-        self.verification_result = 0
-        self.capture = None # OpenCV로 카메라 초기화
-        self.initialize_camera()
+        self.perfect_count = 0
+        self.count = 0
 
-    def initialize_camera(self):
-        """
-        카메라를 초기화하는 메서드.
-        """
-        # 기존 카메라 해제
-        if self.capture and self.capture.isOpened():
-            print('Capturing !!!!!!!!! 캡쳐가 켜져 있어서 기존 캡쳐를 해제합니다.')
-            self.capture.release()
+#########################################################################################
 
-          # 카메라 장치 해제
-        # self.capture = cv2.VideoCapture(0)  # OpenCV로 카메라 초기화
-        # # 기존 카메라 리소스 해제
-        # if hasattr(self, 'camera') and self.camera.play:
-        #     self.camera.play = False  # 카메라 중지
-        #     print("reset initialize_camera1 : 기존 카메라 리소스 해제 완료.")
-        #
-        # # 새로운 카메라 초기화
-        # self.camera = self.ids.camera  # .kv 파일에서 정의한 카메라 위젯을 가져옴
-        # self.camera.play = True  # 카메라가 자동으로 켜지도록 설정
-        # print("reset initialize_camera2 : 카메라 초기화 완료.")
+    # 헬멧 탐지 모델 콜백 함수 정의
+    def helmet_result_callback(self, result):
+        self.helmet_result = result
+        print("[모델 결과] Helmet Model Result:", self.helmet_result)
+        
+        if self.helmet_result_override or self.helmet_result == 1:
+            print("[모델 결과] 헬멧 착용 확인")
+            model_result = [1, 0]
+            self.make_df(self.mem_id, model_result)
+            self.result_list.append(2)
+            self.retry_count = 0 # 성공 시 재시도 횟수 초기화
+            self.is_retrying = False # 헬멧 착용 확인 시 재시도 플래그 초기화
+            Clock.schedule_once(lambda dt: self.popup_manager.show_helmet_verification_success_popup(), 2.0)
+            
+        elif self.helmet_result == 0:
+            if not self.is_retrying and self.retry_count < 2:  # 재시도가 진행 중이 아니면(self.is_retrying == False)
+                self.is_retrying = True  # 재시도 시작 표시
+                self.retry_count += 1
+                print(f"[모델 결과] 헬멧 미착용 확인 : 재시도 횟수 {self.retry_count}")
+                Clock.schedule_once(self.retry_helmet_detection, 3.0)
+            elif self.retry_count >= 2:
+                print(f"[모델 결과] 헬멧 미착용 확인 : 재시도 횟수 {self.retry_count+1} : 팝업 표시")
+                model_result = [0, 0]
+                print(f"[모델 결과] self.mem_id : {self.mem_id}")
+                self.make_df(self.mem_id, model_result, "0")
+                self.result_list.append(3)
+                Clock.schedule_once(lambda dt: self.popup_manager.show_helmet_warning_popup(), 2.0)
+                self.retry_count = 0  # 재시도 횟수 초기화
+                self.is_retrying = False  # 최종 실패 후 재시도 중단
+        else: # NO FACE self.helmet_result == 2
+            print("[모델 결과] 헬멧 검출 실패")
+            self.is_retrying = False
+        
+    # 안면 인식 모델 콜백 함수 정의
+    def iv_result_callback(self, result):
+        self.verification_result = result
+        print("[모델 결과] Identity Verification Model Result:", self.verification_result)
+        
+        if self.verification_result_override or self.verification_result == 1:
+            print("[모델 결과] 안면 인식 확인")
+            self.ids.btn_verify.disabled = False  # 인증 버튼을 활성화
+            model_result = [1, 1]
+            self.make_df(self.mem_id, model_result)
+            self.result_list.append(0)
+            self.retry_count = 0 # 성공 시 재시도 횟수 초기화
+            self.is_retrying = False # 헬멧 착용 확인 시 재시도 플래그 초기화
+            if self.perfect_count == 0:
+                current_location = get_current_location()
+                print(f"check_same_person : current_location : {current_location}=========================================")
+                self.insert_rental_log(self.mem_id, self.result_list, current_location)
+                self.rent_no = self.get_rent_no(self.mem_id)
+                print(f"check_same_person : ################## self.rent_no : {self.rent_no}=========================================")
+        
+        elif self.verification_result == 0:
+            if not self.is_retrying and self.retry_count < 2:  # 재시도가 진행 중이 아니면(self.is_retrying == False)
+                self.is_retrying = True  # 재시도 시작 표시
+                self.retry_count += 1
+                print(f"[모델 결과] 안면 인식 실패 : 재시도 횟수 {self.retry_count}")
+                
+                # 이전에 예약된 이벤트 모두 취소
+                Clock.unschedule(self.retry_identity_verification)
+                
+                Clock.schedule_once(self.retry_identity_verification, 3.0)
+            elif self.retry_count >= 2:
+                print(f"[모델 결과] 안면 인식 실패 : 재시도 횟수 {self.retry_count+1} : 팝업 표시")
+                model_result = [1, 0]
+                print(f"[모델 결과] self.mem_id : {self.mem_id}")
+                self.make_df(self.mem_id, model_result, "0")
+                self.result_list.append(1)
+                Clock.schedule_once(lambda dt: self.popup_manager.show_face_verification_failed_popup(), 2.0)
+                self.retry_count = 0  # 재시도 횟수 초기화
+                self.is_retrying = False  # 최종 실패 후 재시도 중단
+                
+        elif self.verification_result == 3:
+            # ID 도용 확인 시 팝업 표시
+            print(f"[모델 결과] ID 도용 확인 : {self.verification_result == 3}")
+            Clock.unschedule(self.retry_identity_verification)
+            Clock.schedule_once(lambda dt: self.popup_manager.show_id_theft_popup(), 2.0)
+        
+        else: # NO FACE self.helmet_result == 2
+            print("[모델 결과] 안면 인식 실패")
+            self.is_retrying = True
+            self.retry_count = 0
+            Clock.unschedule(self.retry_identity_verification)  # 이벤트 해제
+            Clock.schedule_once(lambda dt: self.popup_manager.show_no_face_popup(), 2.0)
+
+#########################################################################################
 
     # 화면이 사용자에게 보여질 때 실행되는 메서드 (화면이 활성화될 때 호출됨)
     def on_enter(self, *args):
-        self.initialize_state()
-        # self.df = pd.DataFrame()
-        self.perfect_count = 0
-        # 헬멧 감지 앱 초기화
+        # self.initialize_state()
+        # self.perfect_count = 0
+
+        self.cookies = SimpleCookie()
+        self.popup_manager = PopupManager(self)
+        # self.cam_app = None
+
+        # self.cam_app2 = None
+        # self.helmet_detected = False
+        # self.helmet_result = 0
+        # self.helmet_result_count = 0
+        # self.dialog = None
+        # self.count = 0
+        self.result_list = []
+        # self.face_verification_attempts = 0
+        # self.helmet_result_override = False
+        # self.verification_result_override = False
+        # self.verification_result = 0
+        # self.capture = None # OpenCV로 카메라 초기화
+        # self.initialize_camera()
+        
+        # driving_start 진입 후 헬멧 탐지 모델 실행
         if not self.cam_app:
-            app = MDApp.get_running_app()
-            mem_id = app.store.get('session')['mem_id']
-            self.cam_app = HelmetDetectionApp(web_cam=self.ids.web_cam3, mem_id=mem_id) # OpenCV 캡처 객체 전달
-            print("헬멧 감지 앱 초기화 완료.")
+            self.start_helmet_detection(self.helmet_result_callback)
+        
 
-        Clock.schedule_once(self.check_helmet_detection, 2.0)
-
-
-    def on_enter2(self, *args):   
-        self.initialize_state()
-        self.perfect_count = 1
-        # 헬멧 감지 앱 초기화
-        if not self.cam_app:
-            app = MDApp.get_running_app()
-            mem_id = app.store.get('session')['mem_id']
-            self.cam_app = HelmetDetectionApp(web_cam=self.ids.web_cam3, mem_id=mem_id)
-            print("헬멧 감지 앱 초기화 완료.")
-
-        Clock.schedule_once(self.check_helmet_detection, 2.0)
-
-
-    # 주기적으로 헬멧 감지 여부를 확인하는 메서드
-    def check_helmet_detection(self, dt):
-        if self.is_checking_helmet:
-            return
-        self.is_checking_helmet = True
-        try:
-            print(f"[START] check_helmet_detection :=======================================")
-            app = MDApp.get_running_app()
-            if app.store.exists('session'):
-                mem_id = app.store.get('session')['mem_id']  # 멤버 ID를 가져옴
-                print(f'mem_id : {mem_id}')
-
-            # 카메라 앱이 실행 중이고, 헬멧이 감지되었다면
-            if self.cam_app and self.cam_app.process_frame(0) != 'null':
-                print(f"check_helmet_detection : self.cam_app.process_frame(0) : =========================================")
-                self.helmet_detected = True  # 헬멧 감지 여부를 True로 설정
-                helmet_result = self.cam_app.process_frame(0)  # 헬멧 감지 결과를 가져옴
-                print(f"check_helmet_detection : helmet_result : {helmet_result}")
-
-                # helmet_result_override가 True이면 헬멧이 감지된 것으로 처리
-                if self.helmet_result_override:
-                    helmet_result = 1
-
-                # 헬멧 안씀 결과값 : 0
-                if helmet_result == 0: 
-                    self.helmet_result_count += 1
-                    print(f"check_helmet_detection : 헬멧 안씀 횟수 {self.helmet_result_count} : 000000000000000")
-                    
-                    # # 최초로 모델 가동 시 추가 작업
-                    # if self.perfect_count == 0:
-                    #     database.insert_rental_log(mem_id, helmet_result, current_location)
-                    #     self.perfect_count += 1
-                    
-                    # 모델 가동 완료. 결과값 : 0 (헬멧 안씀)
-                    if self.cam_app:
-                        Clock.schedule_once(self.cam_app.process_frame, 1.0)  # 1초 후에 process_frame 실행
-                        Clock.schedule_once(self.check_helmet_detection, 2.0)  # 2초 후에 헬멧 감지 확인
-                        
-                    # 모델 3회째 가동되었을 때
-                    if self.helmet_result_count & 3 == 0: ## 3의 배수일 때
-                        print(f"check_helmet_detection : 헬멧 안씀 횟수 {self.helmet_result_count} : 3의 배수일 때")
-                        # 예약된 작업을 해제하는 방법
-                        Clock.unschedule(self.cam_app.process_frame)
-                        Clock.unschedule(self.check_helmet_detection)
-                        model_result = [0, 0]
-                        self.make_df(mem_id, model_result, "0")
-                        self.result_list.append(3)
-                        Clock.schedule_once(lambda dt: self.popup_manager.show_helmet_warning_popup(), 2.0)  # 2초 후에 팝업 실행
-                
-                # 헬멧 씀 결과값 : 1
-                else:
-                    print("check_helmet_detection : 헬멧 씀 11111111111111")
-                    model_result = [1, 0]
-                    self.make_df(mem_id, model_result)
-                    self.result_list.append(2)
-                    # self.cam_app.stop()
-                    # if self.perfect_count == 0:
-                    #     database.insert_rental_log(mem_id, helmet_result, current_location)
-                    #     self.perfect_count += 1
-                    if self.perfect_count == 0:
-                        # 최초로 헬멧 탐지 시에만 헬멧 탐지 성공 팝업 실행
-                        Clock.schedule_once(lambda dt: self.popup_manager.show_helmet_verification_success_popup(), 1.0)  # 2초 후에 팝업 실행
-                    else:   
-                        self.start_identity_verification()
-            else:
-                print("헬멧 감지 앱이 초기화되지 않았거나 헬멧이 감지되지 않았습니다.")
-        finally:
-            self.is_checking_helmet = False
-
-
-    # 얼굴 인식 시작
-    def start_identity_verification(self, *args):
-        if self.is_verifying_identity:
-            return
-        self.is_verifying_identity = True
-        try:
-            app = MDApp.get_running_app()
-            if app.store.exists('session'):
-                mem_id = app.store.get('session')['mem_id']
-                print(f'[start] start_identity_verification== mem_id : {mem_id}=========================================')
-                
-                # 카메라를 켜고 화면에 표시
-                self.initialize_camera()
-                # 앞의 cam_app을 초기화하고 다음으로 넘아갑니다.
-                self.stop_camera()
-                self.cam_app = None
-
-                # 얼굴 인식 앱 시작
-                self.cam_app2 = Compare_with_last_cropped_image(web_cam=self.ids.web_cam3, mem_id=mem_id)
-                # print(f"start_identity_verification : self.cam_app2 : ========================================")
-                
-                Clock.schedule_once(self.check_same_person, 0)
-                # print(f"start_identity_verification : Clock.schedule_once : =========================================")
-
-        finally:
-            self.is_verifying_identity = False
-
-    # 동일 인물인지 확인
-    def check_same_person(self, dt):
-        print(f"[START] check_same_person=========================================")
-        if self.cam_app2:
-            # 현재 로그인된 회원의 mem_id 가져오기
-            app = MDApp.get_running_app()
-            logged_in_mem_id = None
-            if app.store.exists('session'):
-                logged_in_mem_id = app.store.get('session')['mem_id']
-            
-            # 얼굴모델 가동됨
-            # Compare_with_last_cropped_image 클래스의 mem_id와 비교
-            if logged_in_mem_id and logged_in_mem_id == self.cam_app2.mem_id:
-                
-                # 고객센터 연결을 통해 임의로 결과를 1로 설정한 경우 덮어쓰지 않음
-                if self.verification_result_override == 100:
-                    print("임의로 설정된 얼굴 인식 결과를 유지합니다. verification_result_override : 100")
-                    verification_result = 1
-                else:
-                    # 최초 실행시 얼굴 인식 결과 가져오기
-                    print(f"안면인식 최초시작 Start first process_frame : =========================================")
-                    verification_result = self.cam_app2.process_frame(0)
-                    print(f"check_same_person : verification_result33333 : {verification_result}=========================================")
-                    
-                # 얼굴 인식 성공 verification_result == 1
-                if verification_result == 1:
-                    print(f"check_same_person : verification_result11111 : {verification_result}=========================================")
-                    self.ids.btn_verify.disabled = False  # 인증 버튼을 활성화
-                    result = 0     
-                    model_result = [1,1] 
-                    self.result_list.append(0)
-                    # 헬멧 씀, 도용 안됨 결과값을 데이터프레임에 추가
-                    self.make_df(logged_in_mem_id, model_result)
-                    
-                    if self.perfect_count == 0:
-                        current_location = get_current_location()
-                        print(f"check_same_person : current_location : {current_location}=========================================")
-                        self.insert_rental_log(logged_in_mem_id, self.result_list, current_location)
-                        self.rent_no = self.get_rent_no(logged_in_mem_id)
-                        print(f"check_same_person : ################## self.rent_no : {self.rent_no}=========================================")
-                    # self.show_verification_success_popup()
-                    # self.start_driving()
-                    
-                # 얼굴 인식 실패 verification_result == 0
-                else:
-                    # verification_result == 0
-                    print(f"check_same_person : verification_result00000 : {verification_result}=========================================")
-                    result = 1
-                    model_result = [1,0] 
-                    self.result_list.append(1)
-                    self.face_verification_attempts += 1
-                    print(f"=============self.face_verification_attempts 시도횟수 : {self.face_verification_attempts}=========================================")
-                    Clock.schedule_once(self.check_same_person, 1.0)  # check_helmet_detection 실행
-                    
-                    # 얼굴 인식 시도횟수가 3의 배수일 때
-                    if self.face_verification_attempts & 3 == 0:
-                        print(f"안면인식 시도횟수 {self.face_verification_attempts} : 3의 배수일 때=========================================")
-                        self.make_df(logged_in_mem_id, model_result)
-                        Clock.unschedule(self.check_same_person)
-                        self.popup_manager.show_face_verification_failed_popup()
-                    
-            print(f"데이터베이스 작업 완료: mem_id = {logged_in_mem_id}")
-        else:
-            print(f"mem_id 불일치: 로그인 = {logged_in_mem_id}, 카메라 앱 = {self.cam_app2.mem_id}")
-
-
-
-    # 화면을 떠날 때 (다른 화면으로 이동할 때) 실행되는 메서드
-    def on_leave(self):
-        # 카메라 앱이 있으면 카메라를 중지하고 화면에서 제거
+    # 헬멧 탐지 모델 실행 메서드
+    def start_helmet_detection(self, result_callback):
+        # 기존 cam_app 종료
         if self.cam_app:
-            self.cam_app.stop()  # 카메라 기능을 중지
-        if self.cam_app2:
-            self.cam_app2.stop()  # 카메라 기능을 중지
-            Clock.unschedule(self.check_helmet_detection)  # 스케줄링을 중지
-            # self.ids.camera_box.clear_widgets()  # camera_box에서 카메라 위젯을 모두 제거
-            self.cam_app = None  # cam_app을 None으로 설정해 메모리를 해제 (다시 돌아오면 새로 생성할 수 있도록)
-            self.cam_app2 = None  # cam_app2을 None으로 설정해 메모리를 해제 (다시 돌아오면 새로 생성할 수 있도록)
+            self.cam_app.stop()
+            self.cam_app = None
+            Clock.schedule_once(lambda dt: self.helmet_check_stop_and_restart(result_callback), 0.1)
+        # 새로운 HelmetDetectionApp 인스턴스 생성
+        else:
+            self.create_helmet_detection(result_callback)
 
-    # 다른 화면으로 전환하는 메서드 (screen_name에 해당하는 화면으로 이동)
-    def switch_screen(self, screen_name):
-        self.manager.current = screen_name  # 화면 전을 요청
+    # 헬멧 탐지 모델 중지 확인 및 재시작 메서드
+    def helmet_check_stop_and_restart(self, result_callback):
+        # cam_app의 stop 완료 확인
+        if self.cam_app and not self.cam_app.is_stopped:
+            Clock.schedule_once(lambda dt: self.helmet_check_stop_and_restart(result_callback), 0.1)
+        else:
+            self.create_helmet_detection(result_callback)
+            
+    # 헬멧 탐지 모델 생성 메서드
+    def create_helmet_detection(self, result_callback):
+        app = MDApp.get_running_app()
+        self.mem_id = app.store.get('session')['mem_id']
+        self.cam_app = HelmetDetectionApp(web_cam=self.ids.web_cam3, 
+                                          mem_id=self.mem_id, 
+                                          helmet_result_override=self.helmet_result_override
+                                          )
+        self.cam_app.set_result_callback(result_callback)
+        print("헬멧 탐지 모델이 새로 시작되었습니다.")       
 
-    # # 헬멧이 감지되면 운행 화면으로 이동하는 메서드
-    # def verify_and_go_to_driving(self):
-    #     if self.helmet_detected:  # 헬멧이 감지되었다면
-    #         self.manager.current = 'index'  # 'index'라는 이름의 화면으로 이동 (운행 시작 화면일 것으로 추정됨)
+    # 헬멧 탐지 모델 재시작 메서드
+    def retry_helmet_detection(self, *args):
+        print("[재시도] 헬멧 인식 모델을 처음부터 다시 실행합니다.")
+        self.start_helmet_detection(self.helmet_result_callback)  # 헬멧 탐지 모델을 처음부터 다시 실행
+        self.is_retrying = False  # 재시도 후 플래그 초기화
+        
+#########################################################################################
+
+    # 안면 인식 모델 실행 메서드
+    def start_identity_verification(self, result_callback):
+        # 기존 cam_app 종료
+        if self.cam_app:
+            self.cam_app.stop()
+            self.cam_app = None
+            Clock.schedule_once(lambda dt: self.iv_check_stop_and_restart(result_callback), 0.1)
+        # 새로운 IdentityVerificationApp 인스턴스 생성
+        else:
+            self.create_identity_verification(result_callback)
+            
+    # 안면 인식 모델 중지 확인 및 재시작 메서드
+    def iv_check_stop_and_restart(self, result_callback):
+        # cam_app의 stop 완료 확인
+        if self.cam_app and not self.cam_app.is_stopped:
+            Clock.schedule_once(lambda dt: self.iv_check_stop_and_restart(result_callback), 0.1)
+        else:
+            self.create_identity_verification(result_callback)
+
+    # 안면 인식 모델 생성 메서드retry_helmet_detection
+    def create_identity_verification(self, result_callback):
+        app = MDApp.get_running_app()
+        self.mem_id = app.store.get('session')['mem_id']
+        self.cam_app = Compare_with_last_cropped_image(web_cam=self.ids.web_cam3, 
+                                                       mem_id=self.mem_id, 
+                                                       verification_result_override=self.verification_result_override)
+        self.cam_app.set_result_callback(result_callback)
+        print("안면 인식 모델이 새로 시작되었습니다.")       
+
+    # 안면 인식 모델 재시작 메서드
+    def retry_identity_verification(self, *args):
+        print(f"[안면 인식 재인증] retry_identity_verification : self.is_retrying : {self.is_retrying}")
+        if not self.is_retrying:  # is_retrying이 False면 재시도 중단
+            return
+        # 이전에 예약된 이벤트 모두 취소
+        Clock.unschedule(self.retry_identity_verification)
+        
+        print("[재시도] 안면 인식 모델을 처음부터 다시 실행합니다.")
+        self.start_identity_verification(self.iv_result_callback)  # 안면 인식 모델을 처음부터 다시 실행
+        self.is_retrying = False  # 재시도 후 플래그 초기화
+
+#########################################################################################
 
     # 특정 UI 요소를 숨기는 메서드
     def verify_and_change_buttons(self):
-        print("verify_and_change_buttons 함수 실행 중...")
+        print("[UI 변경] 인증 완료")
         
         if self.ids.btn_verify.text == "인증 완료":
             # 모든 실행 상태를 중지
-            self.stop_all_running_processes()
+            self.cam_app.stop()
             
             # 푸시 알림 보내기
-            show_system_notification("인증 서비스 실행중", "1분마다 재인증을 시작합니다.")
-            show_kivy_popup("인증 서비스 실행중", "1분마다 재인증을 시작합니다.", delay=1)
+            show_system_notification("인증 서비스 실행중", "1분마다 인증을 재시작합니다.")
+            show_kivy_popup("인증 서비스 실행중", "1분마다 인증을 재시작합니다.", delay=1)
             
             self.ids.title_box.text = "운행중 인증확인"
             self.ids.text_box.text = "헬멧 착용한 상태를 유지해주세요"
@@ -309,17 +258,16 @@ class DrivingStart(MDScreen):
             self.ids.btn_verify.on_release = self.toggle_camera
             self.ids.btn_customer_service.opacity = 1
             self.ids.btn_customer_service.disabled = False
-            
-            # 1분(60초)마다 self.on_enter() 실행
-            print("3분(180초)마다 self.on_enter2() 실행")
+
+            print("120초마다 self.on_enter() 실행")
             # self.scheduled_event = Clock.schedule_interval(self.on_enter2, 60)
-            self.scheduled_event= Clock.schedule_once(self.on_enter2, 60)
+            self.scheduled_event= Clock.schedule_once(self.retry_helmet_detection, 120)
             print(f"self.scheduled_event : {self.scheduled_event}")
 
     def toggle_camera(self):
         if self.cam_app:
             if self.ids.btn_verify.text == "운행 일시정지":
-                self.stop_camera()
+                self.cam_app.stop()
                 self.ids.btn_verify.text = "운행 재개"
                 # 스케줄링된 이벤트를 일시정지
                 if hasattr(self, 'scheduled_event') and self.scheduled_event is not None:
@@ -327,18 +275,21 @@ class DrivingStart(MDScreen):
                     self.scheduled_event = None
                     print("스케줄링된 이벤트가 일시정지되었습니다.")
             elif self.ids.btn_verify.text == "운행 재개":
-                self.start_camera()
+                # self.retry_helmet_detection()
                 self.ids.btn_verify.text = "운행 일시정지"
                 # 스케줄링된 이벤트를 재개
                 if self.scheduled_event is None:
-                    self.scheduled_event = Clock.schedule_interval(self.on_enter2, 60)
-                    print("스케줄링된 이벤트가 재개되었습니다.")
+                    print(f"")
+                    self.perfect_count = 1
+                    self.scheduled_event = Clock.schedule_interval(self.retry_helmet_detection, 60)
+                    print(f"스케줄링된 이벤트가 재개되었습니다.")
+
 
     # 운행 종료
     def end_driving(self):
         if self.cam_app:
-            self.stop_camera()
-            self.cam_app2 = None
+            self.cam_app.stop()
+            self.cam_app = None
         # print(f"Inserting to cert log: {self.df}")
         try:
             self.insert_to_cert_log()
@@ -370,62 +321,28 @@ class DrivingStart(MDScreen):
         self.ids.btn_customer_service.disabled = True
         print("버튼 상태 초기화 완료")
         self.manager.current = 'index'
-
-
-    def start_camera(self):
-        """
-        카메라를 재시작하는 메서드.
-        """
-        if self.cam_app:
-            # self.cam_app.camera.play = True  # 헬멧 감지 앱의 카메라 시작
-            # self.cam_app.is_running = True  # 실행 상태 업데이트
-            # Clock.schedule_once(self.cam_app.process_frame, 0)  # 프레임 처리 시작
-            print("헬멧 감지 카메라 시작됨.")
-
-        if self.cam_app2:
-            # self.cam_app2.camera.play = True  # 얼굴 인식 앱의 카메라 시작
-            # self.cam_app2.is_running = True  # 실행 상태 업데이트
-            # Clock.schedule_once(self.cam_app2.process_frame, 0)  # 프레임 처리 시작
-            print("얼굴 인식 카메라 시작됨.")
-
-    def stop_camera(self):
-        """
-        카메라를 일시정지하는 메서드.
-        """
+        
+    # 화면을 떠날 때 (다른 화면으로 이동할 때) 실행되는 메서드
+    def on_leave(self):
         if self.cam_app:
             self.cam_app.stop()
-            print("헬멧 감지 카메라 정지됨.")
+            self.cam_app = None
 
-        if self.cam_app2:
-            self.cam_app2.stop()
-            print("얼굴 인식 카메라 정지됨.")
-
-    def stop_all_running_processes(self):
-        # HelmetDetectionApp의 self.is_running을 False로 설정
-        if self.cam_app:
-            self.cam_app.is_running = False
-            print("HelmetDetectionApp의 실행 상태가 중지되었습니다.")
-
-        # Compare_with_last_cropped_image의 self.is_running을 False로 설정
-        if self.cam_app2:
-            self.cam_app2.is_running = False
-            print("Compare_with_last_cropped_image의 실행 상태가 중지되었습니다.")
-
-
+#########################################################################################
     ### 데이터프레임 만들기 함수
     def make_df(self, mem_id, model_result, service=None):
         self.count += 1
         response = self.send_make_df(self.count, mem_id, model_result, service)
         if response.get('status') == 'success':
-            print("Insert rental log success")
+            print("Insert cert log df success")
         else:
-            print("Insert rental log failed")
+            print("Insert cert log df failed")
     
-    def send_make_df(self, count, logged_in_mem_id, model_result, service):
+    def send_make_df(self, count, mem_id, model_result, service):
         url = f'{BASE_URL}/make_df/'
         data = {
             'count': count,
-            'mem_id': logged_in_mem_id,
+            'mem_id': mem_id,
             'model_result': model_result,
             'service': service
         }
@@ -531,25 +448,3 @@ class DrivingStart(MDScreen):
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
             return {'status': 'fail', 'message': '서버 오류 발생'}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
