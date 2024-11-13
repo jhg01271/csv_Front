@@ -1,5 +1,5 @@
 #:import CustomTextField customwidgets 
-# 신분증 인증 화면 정의
+# 면허증 인증 화면 정의
 <Regimage2>:
     name: 'mem_regimage2'
 
@@ -24,7 +24,7 @@
 
         # 타이틀 레이블
         MDLabel:
-            text: "신분증 확인"
+            text: "면허증 확인"
             # bold: True
             halign: "left"
             valign: "middle"  # 세로 가운데 정렬
@@ -57,13 +57,13 @@
             # md_bg_color: 1, 0, 0, 1  # 상단 배경 색상을 빨간색으로 설정 (예시)
 
             Image:
-                source: "신분증이미지.png"  # 신분증 이미지를 여기에 표시
+                source: "면허증이미지.png"  # 면허증 이미지를 여기에 표시
                 allow_stretch: True
                 keep_ratio: True
 
-        # 신분증 직접 촬영 버튼
+        # 면허증 직접 촬영 버튼
         MDRaisedButton:
-            text: "신분증 직접 촬영"
+            text: "면허증 직접 촬영"
             size_hint: (0.8, None)
             height: dp(45)
             font_size: sp(18)

@@ -243,9 +243,9 @@ Builder.load_string("""
                     size_hint_y: None
                     height: dp(30)  # 이 값을 조절하여 간격을 조정할 수 있습니다
 
-                # 신분증 인증 버튼
+                # 면허증 인증 버튼
                 MDRaisedButton:
-                    text: "신분증 인증"
+                    text: "면허증 인증"
                     size_hint: (0.8, None)
                     height: dp(10)
                     md_bg_color: "#FFFFFF"
@@ -282,7 +282,7 @@ class Mypage(MDScreen):
     session = None
     session_id = None
     
-    # 신분증 변경하지 않을때 초기값
+    # 면허증 변경하지 않을때 초기값
     img_regno1 = 0
     img_regno2 = 0
     regno1 = None

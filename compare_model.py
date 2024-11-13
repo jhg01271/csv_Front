@@ -7,13 +7,13 @@ from kivy.uix.camera import Camera  # Camera는 카메라 비디오 스트림을
 from kivy.clock import Clock  # Clock은 주기적으로 함수를 실행하는 데 사용됩니다.
 from kivy.graphics.texture import Texture  # Texture는 화면에 이미지를 그리기 위한 객체입니다.
 from kivy.storage.jsonstore import JsonStore  # JsonStore는 데이터를 JSON 형식으로 저장하는 데 사용됩니다.
-from deepface import DeepFace  # DeepFace는 안면 인식 및 비교를 위한 라이브러리입니다.
+from deepface import DeepFace  # DeepFace는 사용자 인증 및 비교를 위한 라이브러리입니다.
 import os  # os 모듈은 파일과 디렉토리를 관리하는데 사용됩니다.
 from kivymd.app import MDApp
 import requests
 import time
 
-# Compare_with_last_cropped_image는 안면 인식을 통해 비교하는 애플리케이션입니다.
+# Compare_with_last_cropped_image는 사용자 인증을 통해 비교하는 애플리케이션입니다.
 class Compare_with_last_cropped_image(MDApp):
     def __init__(self, web_cam, mem_id=None, verification_result_override=False, **kwargs):
         super().__init__(**kwargs)
@@ -116,8 +116,8 @@ class Compare_with_last_cropped_image(MDApp):
                 #     self.stop()
                 # return
 
-            # 신분증이 감지되지 않았으므로 안면 인식을 진행합니다.
-            # 기존의 안면 인식 수행 로직...
+            # 면허증이 감지되지 않았으므로 사용자 인증을 진행합니다.
+            # 기존의 사용자 인증 수행 로직...
             # 현재 카메라 이미지와 마지막 저장된 이미지 비교
             if not self.id_theft:
                 self.comparison_result = self.compare_with_last_cropped_image(self.mem_id)           
@@ -137,14 +137,14 @@ class Compare_with_last_cropped_image(MDApp):
             #     # 텍스처가 한 번만 반전되었음을 기록
             #     self.flipped_texture = True
             
-            # 고객센터를 통한 안면 인식 결과를 1로 만드는 경우라면
+            # 고객센터를 통한 사용자 인증 결과를 1로 만드는 경우라면
             if self.verification_result_override:
                 print(f"************************ self.verification_result_override : {self.verification_result_override}")
                 self.comparison_result = 1
             #     # self.helmet_detected = helmet_detected
             #     print(f"[END] process_frame : helmet_detected : {self.helmet_detected}=======================================")
             print(f"************************ verification_result : {self.comparison_result}")
-            print(f"************************ self.result_callback: {self.result_callback}")
+            # print(f"************************ self.result_callback: {self.result_callback}")
 
             # 콜백을 통해 결과 전달
             if self.result_callback:
@@ -206,7 +206,7 @@ class Compare_with_last_cropped_image(MDApp):
             self.capture.release()
         print("카메라가 정지되었습니다.")
         
-    # 안면 인식 확인 요청
+    # 사용자 인증 확인 요청
     def compare_with_last_cropped_image(self, mem_id):
         url = 'http://127.0.0.1:8000/drive/verify_identity/'
         data = {'mem_id': mem_id}
@@ -216,7 +216,7 @@ class Compare_with_last_cropped_image(MDApp):
             result = response.json()
             return result.get('verified', 'null')
         except requests.exceptions.RequestException as e:
-            print(f"안면 인식 확인 요청 실패: {e}")
+            print(f"사용자 인증 확인 요청 실패: {e}")
             return 0
     
       

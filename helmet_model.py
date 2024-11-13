@@ -107,7 +107,7 @@ class HelmetDetectionApp(MDApp):
         # 서버로 전송
         send_image_to_server(img_encoded.tobytes(), img_filename)
 
-        # 헬멧 탐지 결과 요청
+        # 헬멧 인증 결과 요청
         self.helmet_detected = self.request_helmet_detection_result(self.mem_id)
 
         # 고객센터를 통한 헬멧 결과를 1로 만드는 경우라면
@@ -138,7 +138,7 @@ class HelmetDetectionApp(MDApp):
 
 
     def get_helmet_detected(self):
-        print(f"헬멧탐지 get_helmet_detected : {self.helmet_detected}")
+        print(f"헬멧 인증 get_helmet_detected : {self.helmet_detected}")
         # return self.helmet_detected
     
         # helmet_result_override가 True인 경우, 결과를 강제로 1로 설정
@@ -187,7 +187,7 @@ class HelmetDetectionApp(MDApp):
             result = response.json()
             return result.get('helmet_detected', 'null')
         except requests.exceptions.RequestException as e:
-            print(f"헬멧 탐지 결과 요청 실패: {e}")
+            print(f"헬멧 인증 결과 요청 실패: {e}")
             return 0
 
 

@@ -55,7 +55,7 @@ Builder.load_string("""
             spacing: dp(10)
 
             MDLabel:
-                text: "CSV에 오신 것을 환영합니다!!"
+                text: "CSV에 오신 것을 환영합니다!"
                 size_hint_y: None
                 text_color: "#656565"
                 height: self.texture_size[1] + dp(5)

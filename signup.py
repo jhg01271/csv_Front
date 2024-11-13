@@ -261,9 +261,9 @@ Builder.load_string("""
                     size_hint_y: None
                     height: dp(30)  # 이 값을 조절하여 간격을 조정할 수 있습니다
 
-                # 신분증 인증 버튼
+                # 면허증 인증 버튼
                 MDRaisedButton:
-                    text: "신분증 인증"
+                    text: "면허증 인증"
                     size_hint: (0.8, None)
                     height: dp(50)
                     md_bg_color: "#FFFFFF"
@@ -291,6 +291,24 @@ class Signup(MDScreen):
     regimage = None
     regno1 = None
     regno2 = None
+
+    def on_leave(self):
+        """화면을 떠날 때 입력 필드를 초기화합니다."""
+        self.ids.mem_id.text = ""
+        self.ids.password.text = ""
+        self.ids.cpassword.text = ""
+        self.ids.name.text = ""
+        self.ids.nickname.text = ""
+        self.ids.phone.text = ""
+        self.ids.address.text = ""
+        self.ids.regno1.text = ""
+        self.ids.regno2.text = ""
+        self.ids.privacy_check.active = False
+        self.ids.terms_check.active = False
+        self.regimage = None
+        self.regno1 = None
+        self.regno2 = None
+
 
     def signup(self):
         # 사용자 입력 데이터 가져오기
@@ -338,7 +356,7 @@ class Signup(MDScreen):
         if response.get('status') == 'success':
             self.show_dialog("회원가입이 완료되었습니다.", is_error=False)
         elif response.get('status') == 'add':
-            # 신분증 인증 이미지 없는 경우
+            # 면허증 인증 이미지 없는 경우
             if mem_id != "":
                 # reg_cam_screen = self.manager.get_screen('reg_cam')
                 # reg_cam_screen.put_mem_id(mem_id)
@@ -388,7 +406,7 @@ class Signup(MDScreen):
 
     def set_regimage(self, image_path):
         self.regimage = image_path
-        print(f"신분증 인증 이미지 설정: {self.regimage}")
+        print(f"면허증 인증 이미지 설정: {self.regimage}")
 
     def set_regno(self, regno1, regno2):
         self.regno1 = regno1

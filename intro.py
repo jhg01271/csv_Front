@@ -16,6 +16,7 @@ Builder.load_string("""
         orientation: 'vertical'
         padding: 20
         spacing: 10
+        # md_bg_color: "#F7F7F9"
 
         MDBoxLayout:
             size_hint_x: None

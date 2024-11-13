@@ -25,9 +25,9 @@ class Regimage(MDScreen):
         reg_cam_screen.put_mem_id(self.mem_id)
         print(f"MemRegImage: mem_id put in to reg_cam")
 
-    # def reg_cam(self):  # 신분증 촬영 메서드 (여기에 촬영 로직을 추가)
+    # def reg_cam(self):  # 면허증 촬영 메서드 (여기에 촬영 로직을 추가)
     #     pass
 
-    # 주석 처리된 모바일 신분증 불러오기 메서드 (추가 로직을 작성할 수 있음)
+    # 주석 처리된 모바일 면허증 불러오기 메서드 (추가 로직을 작성할 수 있음)
     # def load_mobile_id(self):
     #     pass

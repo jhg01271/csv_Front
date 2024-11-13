@@ -40,7 +40,7 @@ class DrivingStart(MDScreen):
 
 #########################################################################################
 
-    # 헬멧 탐지 모델 콜백 함수 정의
+    # 헬멧 인증 모델 콜백 함수 정의
     def helmet_result_callback(self, result):
         self.helmet_result = result
         print("[모델 결과] Helmet Model Result:", self.helmet_result)
@@ -73,13 +73,13 @@ class DrivingStart(MDScreen):
             print("[모델 결과] 헬멧 검출 실패")
             self.is_retrying = False
         
-    # 안면 인식 모델 콜백 함수 정의
+    # 사용자 인증 모델 콜백 함수 정의
     def iv_result_callback(self, result):
         self.verification_result = result
         print("[모델 결과] Identity Verification Model Result:", self.verification_result)
         
         if self.verification_result_override or self.verification_result == 1:
-            print("[모델 결과] 안면 인식 확인")
+            print("[모델 결과] 사용자 인증 확인")
             self.ids.btn_verify.disabled = False  # 인증 버튼을 활성화
             model_result = [1, 1]
             self.make_df(self.mem_id, model_result)
@@ -94,17 +94,17 @@ class DrivingStart(MDScreen):
                 print(f"check_same_person : ################## self.rent_no : {self.rent_no}=========================================")
         
         elif self.verification_result == 0:
-            if not self.is_retrying and self.retry_count < 2:  # 재시도가 진행 중이 아니면(self.is_retrying == False)
+            if not self.is_retrying and self.retry_count < 1:  # 재시도가 진행 중이 아니면(self.is_retrying == False)
                 self.is_retrying = True  # 재시도 시작 표시
                 self.retry_count += 1
-                print(f"[모델 결과] 안면 인식 실패 : 재시도 횟수 {self.retry_count}")
+                print(f"[모델 결과] 사용자 인증 실패 : 재시도 횟수 {self.retry_count}")
                 
                 # 이전에 예약된 이벤트 모두 취소
                 Clock.unschedule(self.retry_identity_verification)
                 
                 Clock.schedule_once(self.retry_identity_verification, 3.0)
-            elif self.retry_count >= 2:
-                print(f"[모델 결과] 안면 인식 실패 : 재시도 횟수 {self.retry_count+1} : 팝업 표시")
+            elif self.retry_count >= 1:
+                print(f"[모델 결과] 사용자 인증 실패 : 재시도 횟수 {self.retry_count+1} : 팝업 표시")
                 model_result = [1, 0]
                 print(f"[모델 결과] self.mem_id : {self.mem_id}")
                 self.make_df(self.mem_id, model_result, "0")
@@ -120,7 +120,7 @@ class DrivingStart(MDScreen):
             Clock.schedule_once(lambda dt: self.popup_manager.show_id_theft_popup(), 2.0)
         
         else: # NO FACE self.helmet_result == 2
-            print("[모델 결과] 안면 인식 실패")
+            print("[모델 결과] 사용자 인증 실패")
             self.is_retrying = True
             self.retry_count = 0
             Clock.unschedule(self.retry_identity_verification)  # 이벤트 해제
@@ -151,12 +151,12 @@ class DrivingStart(MDScreen):
         # self.capture = None # OpenCV로 카메라 초기화
         # self.initialize_camera()
         
-        # driving_start 진입 후 헬멧 탐지 모델 실행
+        # driving_start 진입 후 헬멧 인증 모델 실행
         if not self.cam_app:
             self.start_helmet_detection(self.helmet_result_callback)
         
 
-    # 헬멧 탐지 모델 실행 메서드
+    # 헬멧 인증 모델 실행 메서드
     def start_helmet_detection(self, result_callback):
         # 기존 cam_app 종료
         if self.cam_app:
@@ -167,7 +167,7 @@ class DrivingStart(MDScreen):
         else:
             self.create_helmet_detection(result_callback)
 
-    # 헬멧 탐지 모델 중지 확인 및 재시작 메서드
+    # 헬멧 인증 모델 중지 확인 및 재시작 메서드
     def helmet_check_stop_and_restart(self, result_callback):
         # cam_app의 stop 완료 확인
         if self.cam_app and not self.cam_app.is_stopped:
@@ -175,7 +175,7 @@ class DrivingStart(MDScreen):
         else:
             self.create_helmet_detection(result_callback)
             
-    # 헬멧 탐지 모델 생성 메서드
+    # 헬멧 인증 모델 생성 메서드
     def create_helmet_detection(self, result_callback):
         app = MDApp.get_running_app()
         self.mem_id = app.store.get('session')['mem_id']
@@ -184,17 +184,17 @@ class DrivingStart(MDScreen):
                                           helmet_result_override=self.helmet_result_override
                                           )
         self.cam_app.set_result_callback(result_callback)
-        print("헬멧 탐지 모델이 새로 시작되었습니다.")       
+        print("헬멧 인증 모델이 새로 시작되었습니다.")       
 
-    # 헬멧 탐지 모델 재시작 메서드
+    # 헬멧 인증 모델 재시작 메서드
     def retry_helmet_detection(self, *args):
         print("[재시도] 헬멧 인식 모델을 처음부터 다시 실행합니다.")
-        self.start_helmet_detection(self.helmet_result_callback)  # 헬멧 탐지 모델을 처음부터 다시 실행
+        self.start_helmet_detection(self.helmet_result_callback)  # 헬멧 인증 모델을 처음부터 다시 실행
         self.is_retrying = False  # 재시도 후 플래그 초기화
         
 #########################################################################################
 
-    # 안면 인식 모델 실행 메서드
+    # 사용자 인증 모델 실행 메서드
     def start_identity_verification(self, result_callback):
         # 기존 cam_app 종료
         if self.cam_app:
@@ -205,7 +205,7 @@ class DrivingStart(MDScreen):
         else:
             self.create_identity_verification(result_callback)
             
-    # 안면 인식 모델 중지 확인 및 재시작 메서드
+    # 사용자 인증 모델 중지 확인 및 재시작 메서드
     def iv_check_stop_and_restart(self, result_callback):
         # cam_app의 stop 완료 확인
         if self.cam_app and not self.cam_app.is_stopped:
@@ -213,7 +213,7 @@ class DrivingStart(MDScreen):
         else:
             self.create_identity_verification(result_callback)
 
-    # 안면 인식 모델 생성 메서드retry_helmet_detection
+    # 사용자 인증 모델 생성 메서드retry_helmet_detection
     def create_identity_verification(self, result_callback):
         app = MDApp.get_running_app()
         self.mem_id = app.store.get('session')['mem_id']
@@ -221,18 +221,18 @@ class DrivingStart(MDScreen):
                                                        mem_id=self.mem_id, 
                                                        verification_result_override=self.verification_result_override)
         self.cam_app.set_result_callback(result_callback)
-        print("안면 인식 모델이 새로 시작되었습니다.")       
+        print("사용자 인증 모델이 새로 시작되었습니다.")       
 
-    # 안면 인식 모델 재시작 메서드
+    # 사용자 인증 모델 재시작 메서드
     def retry_identity_verification(self, *args):
-        print(f"[안면 인식 재인증] retry_identity_verification : self.is_retrying : {self.is_retrying}")
+        print(f"[사용자 인증 재인증] retry_identity_verification : self.is_retrying : {self.is_retrying}")
         if not self.is_retrying:  # is_retrying이 False면 재시도 중단
             return
         # 이전에 예약된 이벤트 모두 취소
         Clock.unschedule(self.retry_identity_verification)
         
-        print("[재시도] 안면 인식 모델을 처음부터 다시 실행합니다.")
-        self.start_identity_verification(self.iv_result_callback)  # 안면 인식 모델을 처음부터 다시 실행
+        print("[재시도] 사용자 인증 모델을 처음부터 다시 실행합니다.")
+        self.start_identity_verification(self.iv_result_callback)  # 사용자 인증 모델을 처음부터 다시 실행
         self.is_retrying = False  # 재시도 후 플래그 초기화
 
 #########################################################################################
