@@ -23,6 +23,7 @@ Builder.load_string("""
             size_hint_y: 0.2
             width: dp(100)
             pos_hint: {"x":0, "top": 1}
+            md_bg_color: "#F7F7F9"
             Image:
                 source: "csv_logo.png"
                 allow_stretch: True

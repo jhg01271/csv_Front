@@ -292,22 +292,22 @@ class Signup(MDScreen):
     regno1 = None
     regno2 = None
 
-    def on_leave(self):
-        """화면을 떠날 때 입력 필드를 초기화합니다."""
-        self.ids.mem_id.text = ""
-        self.ids.password.text = ""
-        self.ids.cpassword.text = ""
-        self.ids.name.text = ""
-        self.ids.nickname.text = ""
-        self.ids.phone.text = ""
-        self.ids.address.text = ""
-        self.ids.regno1.text = ""
-        self.ids.regno2.text = ""
-        self.ids.privacy_check.active = False
-        self.ids.terms_check.active = False
-        self.regimage = None
-        self.regno1 = None
-        self.regno2 = None
+    # def on_leave(self):
+    #     """화면을 떠날 때 입력 필드를 초기화합니다."""
+    #     self.ids.mem_id.text = ""
+    #     self.ids.password.text = ""
+    #     self.ids.cpassword.text = ""
+    #     self.ids.name.text = ""
+    #     self.ids.nickname.text = ""
+    #     self.ids.phone.text = ""
+    #     self.ids.address.text = ""
+    #     self.ids.regno1.text = ""
+    #     self.ids.regno2.text = ""
+    #     self.ids.privacy_check.active = False
+    #     self.ids.terms_check.active = False
+    #     self.regimage = None
+    #     self.regno1 = None
+    #     self.regno2 = None
 
 
     def signup(self):
@@ -328,40 +328,30 @@ class Signup(MDScreen):
         if not (privacy_checked and terms_checked):
             self.show_dialog("개인정보 처리방침 및 이용약관에 모두 동의해주세요.")
             return
-        # # 입력 데이터 유효성 검사
-        # if not database.is_Valid(mem_id) and password == cpassword and password != "":
-        #     if self.regimage is None:
-        #         reg_cam_screen = self.manager.get_screen('reg_cam')
-        #         reg_cam_screen.put_mem_id(mem_id)
-        #         print(f'from signup1.py mem_id: {mem_id}')
-        #         self.manager.current = 'reg_cam'
-        #         return
-            
-        #     # 모든 조건이 충족되면 회원가입 처리
-        #     result = database.insert_into_user(
-        #         mem_id, password, name, nickname, phone, address, regno1, regno2, self.regimage
-        #     )
-        #     if result:
-        #         self.show_dialog("회원가입이 완료되었습니다.", is_error=False)
-        #     else:
-        #         self.show_dialog("회원가입 중 오류가 발생했습니다.", is_error=True)
-        # elif database.is_Valid(mem_id):
-        #     self.show_dialog("이미 존재하는 아이디입니다.")
-        # else:
-        #     self.show_dialog("입력이 잘못되었거나 비밀번호가 일치하지 않습니다.")
         
         # 입력 데이터 유효성 검사 및 서버로 회원가입 요청 보내기
         response = self.send_signup_request(mem_id, password, cpassword, name, nickname, phone, address, regno1, regno2, self.regimage, self.regno1, self.regno2)
 
         if response.get('status') == 'success':
             self.show_dialog("회원가입이 완료되었습니다.", is_error=False)
+            """화면을 떠날 때 입력 필드를 초기화합니다."""
+            self.ids.mem_id.text = ""
+            self.ids.password.text = ""
+            self.ids.cpassword.text = ""
+            self.ids.name.text = ""
+            self.ids.nickname.text = ""
+            self.ids.phone.text = ""
+            self.ids.address.text = ""
+            self.ids.regno1.text = ""
+            self.ids.regno2.text = ""
+            self.ids.privacy_check.active = False
+            self.ids.terms_check.active = False
+            self.regimage = None
+            self.regno1 = None
+            self.regno2 = None
         elif response.get('status') == 'add':
             # 면허증 인증 이미지 없는 경우
             if mem_id != "":
-                # reg_cam_screen = self.manager.get_screen('reg_cam')
-                # reg_cam_screen.put_mem_id(mem_id)
-                # print(f'from signup1.py mem_id: {mem_id}')
-                # self.manager.current = 'reg_cam'
                 self.set_mem_id()
             else:
                 self.show_dialog("아이디를 입력해주세요.", is_error=True)
@@ -439,4 +429,19 @@ class Signup(MDScreen):
             self.manager.current = 'login'
 
     def switch_screen(self, screen_name):
+        """화면을 떠날 때 입력 필드를 초기화합니다."""
+        self.ids.mem_id.text = ""
+        self.ids.password.text = ""
+        self.ids.cpassword.text = ""
+        self.ids.name.text = ""
+        self.ids.nickname.text = ""
+        self.ids.phone.text = ""
+        self.ids.address.text = ""
+        self.ids.regno1.text = ""
+        self.ids.regno2.text = ""
+        self.ids.privacy_check.active = False
+        self.ids.terms_check.active = False
+        self.regimage = None
+        self.regno1 = None
+        self.regno2 = None
         self.manager.current = screen_name
