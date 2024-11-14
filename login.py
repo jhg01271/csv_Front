@@ -84,7 +84,7 @@ Builder.load_string("""
             size_hint_x: None
             width: dp(300)
             pos_hint: {"center_x": 0.5}
-            on_text_validate: password.focus = True  # Enter 키를 눌렀을 때 포커스 이동
+            on_text_validate: root.ids.password.ids.textfield.focus = True  # Enter 키를 눌렀을 때 포커스 이동
             line_color_normal: "#00289B"
             # hint_text_color_normal: "#00289B"
             line_color_focus: "#00289B"
@@ -100,7 +100,7 @@ Builder.load_string("""
             size_hint_x: None
             width: dp(300)
             pos_hint: {"center_x": 0.5}
-            #password: True  # 비밀번호를 숨기기 위해 True 설정
+            password: True  # 비밀번호를 숨기기 위해 True 설정
         
         
 

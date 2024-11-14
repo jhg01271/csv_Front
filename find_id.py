@@ -91,6 +91,7 @@ Builder.load_string("""
                 text_color: "#00289B"
                 text_color_normal: "#00289B"
                 text_color_focus: "#00289B"
+                on_text_validate: root.ids.mem_tel.focus = True
 
             # 휴대폰번호 입력칸
             MDTextField:
@@ -108,6 +109,7 @@ Builder.load_string("""
                 text_color: "#00289B"
                 text_color_normal: "#00289B"
                 text_color_focus: "#00289B"
+                on_text_validate: root.ids.mem_birth.focus = True
 
             # 생년월일 입력칸
             MDTextField:
@@ -125,6 +127,7 @@ Builder.load_string("""
                 text_color: "#00289B"
                 text_color_normal: "#00289B"
                 text_color_focus: "#00289B"
+                # on_text_validate: root.find_id()
 
             MDLabel:
                 text: " "

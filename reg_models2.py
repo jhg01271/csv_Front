@@ -1,23 +1,17 @@
 import os
 import time
 import cv2
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import Image
-from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivymd.uix.screen import MDScreen
-from kivy.logger import Logger
 from kivymd.app import MDApp
 from kivy.storage.jsonstore import JsonStore
 import requests
 import numpy as np
-
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDRaisedButton
 
 class CamApp(MDApp):
-    def __init__(self, manager, web_cam, mem_id):
+    def __init__(self, manager, web_cam, mem_id, id_theft=False):
         super().__init__()
         self.manager = manager
         self.web_cam = web_cam
@@ -28,6 +22,10 @@ class CamApp(MDApp):
         self.regno1 = None
         self.regno2 = None
         self.store = JsonStore('session.json')  # 추가된 부분
+        self.id_theft = id_theft
+        self.is_stopping = False  # stop 호출 중복 방지를 위한 플래그 추가
+        self.popup_opened = False  # 팝업 중복 방지용 플래그 추가
+
 
         # OpenCV로 카메라 연결
         self.capture = cv2.VideoCapture(0)
@@ -38,6 +36,31 @@ class CamApp(MDApp):
 
         # 15초 후에 얼굴 검출 시작
         Clock.schedule_once(lambda dt: self.start_face_detection(), 10)
+
+        
+    # 팝업 생성 함수
+    def show_popup(self, title, text):
+        if not self.popup_opened:
+            self.popup_opened = True
+            self.dialog = MDDialog(
+                title=title,
+                text=text,
+                buttons=[
+                    MDRaisedButton(
+                        text="확인",
+                        md_bg_color="#00289B",
+                        
+                        on_release=lambda x: self.close_popup()
+                    )
+                ]
+            )
+            self.dialog.open()
+            
+    # 팝업 닫기 함수
+    def close_popup(self):
+        if self.dialog:
+            self.dialog.dismiss()
+        self.popup_opened = False   
 
     def display_camera(self, *args):
         ret, frame = self.capture.read()
@@ -61,7 +84,8 @@ class CamApp(MDApp):
         ret, frame = self.capture.read()
         if not ret or frame is None:
             print("카메라에서 프레임을 가져올 수 없습니다.")
-            self.stop_camera()
+            if not self.is_stopping:
+                Clock.schedule_once(self.stop_camera, 1)
             return
 
         # 얼굴 검출
@@ -73,9 +97,9 @@ class CamApp(MDApp):
         # 화면에 표시할 프레임 복사
         display_frame = frame.copy()
 
-        # 얼굴에 사각형 그리기 (화면 표시용)
-        for (x, y, w, h) in faces:
-            cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # # 얼굴에 사각형 그리기 (화면 표시용)
+        # for (x, y, w, h) in faces:
+        #     cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         if not self.face_found and len(faces) > 0:
             img_filename = detect_and_save_face(frame, self.mem_id)  # mem_id 전달
@@ -84,17 +108,34 @@ class CamApp(MDApp):
                 self.face_found = True
 
                 ### 여기 위까지가 얼굴이 있는 원본 이미지 저장 및 서버 전송 완료
-
+                
                 self.cropped_img_filename, self.regno1, self.regno2 = fetch_and_crop_latest_image(self.mem_id)
                 print(f'{self.cropped_img_filename, self.regno1, self.regno2}')
+                if self.cropped_img_filename == 1:
+                    # self.id_theft = True
+                    # print("면허증이 아닌 신분증 탐지")
+                    print(f"self.id_theft: {self.cropped_img_filename, self.regno1, self.regno2, self.id_theft}")
+                    Clock.schedule_once(lambda dt: self.show_popup("알림", "OCR 결과 없음"), 0)
+                elif self.cropped_img_filename == 2:
+                    print(f"self.id_theft: {self.cropped_img_filename, self.regno1, self.regno2, self.id_theft}")
+                    Clock.schedule_once(lambda dt: self.show_popup("알림", "주민번호 오류"), 0)
+                elif self.cropped_img_filename == 3:
+                    print(f"self.id_theft: {self.cropped_img_filename, self.regno1, self.regno2, self.id_theft}")
+                    Clock.schedule_once(lambda dt: self.show_popup("알림", "면허증이 아닌 신분증 탐지"), 0)
+                elif self.cropped_img_filename is None:
+                    print("이미지 파일이 존재하지 않거나 서버 오류가 발생했습니다.")
+                
+                if not self.is_stopping:
+                    Clock.schedule_once(self.stop_camera, 1)
+                    
                 if self.cropped_img_filename:
-                    print(
-                        f"크롭된 얼굴 이미지 파일명: {self.cropped_img_filename} self.regno1: {self.regno1} self.regno2: {self.regno2}")
-                    Clock.schedule_once(self.stop_camera, 2)
-                    return
+                    print(f"크롭된 얼굴 이미지 파일명: {self.cropped_img_filename} self.regno1: {self.regno1} self.regno2: {self.regno2}")
+                    if not self.is_stopping:
+                        Clock.schedule_once(self.stop_camera, 1)
         else:
             print("얼굴을 찾을 수 없음")
-            Clock.schedule_once(self.stop_camera, 1)
+            if not self.is_stopping:    
+                Clock.schedule_once(self.stop_camera, 1)
 
         # Kivy의 Image 위젯에 카메라 프레임을 표시하기 위해 텍스처로 변환
         buf = cv2.flip(display_frame, 0).tobytes()
@@ -104,6 +145,10 @@ class CamApp(MDApp):
 
     # 15초 후 또는 얼굴이 인식된 후 카메라 인식을 종료하는 함수
     def stop_camera(self, *args):
+        if self.is_stopping:
+            return  # 이미 stop_camera가 호출되었으면 다시 실행하지 않음
+        self.is_stopping = True
+        
         # 업데이트 중지
         if self.update_event:
             Clock.unschedule(self.update_event)  # 업데이트 중지
@@ -124,18 +169,18 @@ class CamApp(MDApp):
         print("mypage 페이지로 전환")
         self.manager.current = "mypage"  # mypage 화면으로 전환
 
-    def on_leave(self):
-        if self.cam_app3:
-            self.cam_app3.stop_camera()
-            self.ids.web_cam.clear_widgets()
-            if self.cam_app3.cropped_img_filename:
-                self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
-                self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
-                print(
-                    f"***reg_models.py*** self.cam_app3.cropped_img_filename: {self.cam_app3.cropped_img_filename} self.cam_app3.regno1: {self.cam_app3.regno1} self.cam_app3.regno2: {self.cam_app3.regno2}")
+    # def on_leave(self):
+    #     if self.cam_app3:
+    #         self.cam_app3.stop_camera()
+    #         self.ids.web_cam.clear_widgets()
+    #         if self.cam_app3.cropped_img_filename:
+    #             self.manager.get_screen('signup').set_regimage(self.cam_app3.cropped_img_filename)
+    #             self.manager.get_screen('signup').set_regno(self.cam_app3.regno1, self.cam_app3.regno2)
+    #             print(
+    #                 f"***reg_models.py*** self.cam_app3.cropped_img_filename: {self.cam_app3.cropped_img_filename} self.cam_app3.regno1: {self.cam_app3.regno1} self.cam_app3.regno2: {self.cam_app3.regno2}")
 
-            self.cam_app3.capture.release()  # 카메라 장치 해제
-            self.cam_app3 = None
+    #         self.cam_app3.capture.release()  # 카메라 장치 해제
+    #         self.cam_app3 = None
 
 
 # 얼굴 검출 후 원본을 저장하는 함수
@@ -186,8 +231,21 @@ def fetch_and_crop_latest_image(mem_id):
         # 이미지 크롭 처리
         cropped_img_filename = crop_latest_image(img, mem_id)
         return cropped_img_filename, regno1, regno2
+   
+    # JSON 데이터를 가져와 메시지 확인
+    elif response.status_code == 400:
+        response_data = response.json()
+        if response_data.get('message') == 'ocr_no_result':
+            print("[얼굴만 비춘 경우] OCR 결과 없음")
+            return 1, 1, 1
+        elif response_data.get('message') == 'regno_error':
+            print("[면허증이 이지만 OCR이 실패한 경우] 주민번호 오류")
+            return 2, 2, 2
+        elif response_data.get('message') == 'id_theft':
+            print("[면허증이 아닌 신분증 탐지] 면허증이 아닌 신분증 탐지")
+            return 3, 3, 3
     else:
-        print("서버에서 이미지를 가져오는 데 실패했습니다.")
+        print(f"서버에서 이미지를 가져오는 데 실패했습니다. {response.status_code}")
         return None, None, None
 
 

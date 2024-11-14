@@ -69,7 +69,8 @@ class Compare_with_last_cropped_image(MDApp):
         ret, frame = self.capture.read()
         if not ret or frame is None:
             print("compare_model...카메라에서 프레임을 가져올 수 없습니다.")
-            self.stop()
+            if not self.is_stopping:
+                Clock.schedule_once(self.stop, 1)
             return
         
 

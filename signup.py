@@ -74,6 +74,7 @@ Builder.load_string("""
                     text_color: "#00289B"
                     text_color_normal: "#00289B"
                     text_color_focus: "#00289B"
+                    on_text_validate: root.ids.password.ids.textfield.focus = True
                     
                 # 비밀번호 입력 필드
                 CustomTextField:
@@ -83,6 +84,7 @@ Builder.load_string("""
                     size_hint_x: None
                     width: dp(300)
                     pos_hint: {"center_x": 0.5}
+                    on_text_validate: root.ids.cpassword.ids.textfield.focus = True
 
                 # 비밀번호 확인 필드
                 CustomTextField:
@@ -92,6 +94,7 @@ Builder.load_string("""
                     size_hint_x: None
                     width: dp(300)
                     pos_hint: {"center_x": 0.5}
+                    on_text_validate: root.ids.name.focus = True
 
                 # 이름 입력 필드
                 MDTextField:
@@ -109,6 +112,7 @@ Builder.load_string("""
                     text_color: "#00289B"
                     text_color_normal: "#00289B"
                     text_color_focus: "#00289B"
+                    on_text_validate: root.ids.nickname.focus = True
 
                 # 닉네임 입력 필드
                 MDTextField:
@@ -126,6 +130,7 @@ Builder.load_string("""
                     text_color: "#00289B"
                     text_color_normal: "#00289B"
                     text_color_focus: "#00289B"
+                    on_text_validate: root.ids.phone.focus = True
 
                 # 전화번호 입력 필드
                 MDTextField:
@@ -144,6 +149,7 @@ Builder.load_string("""
                     text_color: "#00289B"
                     text_color_normal: "#00289B"
                     text_color_focus: "#00289B"
+                    on_text_validate: root.ids.address.focus = True
 
                 # 주소 입력 필드
                 MDTextField:
@@ -161,6 +167,7 @@ Builder.load_string("""
                     text_color: "#00289B"
                     text_color_normal: "#00289B"
                     text_color_focus: "#00289B"
+                    on_text_validate: root.ids.regno1.focus = True
                     
                 # 주민등록번호 입력 필드
                 MDBoxLayout:
@@ -185,6 +192,7 @@ Builder.load_string("""
                         text_color: "#00289B"
                         text_color_normal: "#00289B"
                         text_color_focus: "#00289B"
+                        on_text_validate: root.ids.regno2.ids.textfield.focus = True
 
                     # "-" 기호를 레이블로 표시
                     MDLabel:
@@ -199,6 +207,7 @@ Builder.load_string("""
                         max_text_length: 7
                         size_hint_x: None
                         width: dp(160)
+                        # on_text_validate: root.signup() 
 
                 # 개인정보처리방침과 이용약관 동의 체크박스
                 MDBoxLayout:
